@@ -1,0 +1,19 @@
+deploy/robots/g1_23dof/include/tt_observations.h
+  s_2d92d93564222b::t_a08fb5cf490b4c 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "71e1b29abd6d36d066fde3c372a5db807d49fc0f",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
