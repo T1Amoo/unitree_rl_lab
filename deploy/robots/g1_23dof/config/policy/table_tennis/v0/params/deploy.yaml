@@ -1,0 +1,74 @@
+# G1 23-DoF Table-Tennis Policy v0 — deploy config
+# Obs scales data-inferred from record/ref.npz (see ../infer_scales.py).
+# ALL terms confirmed scale=1.0 (actor_obs == raw obs, no pre-scaling in sim).
+# Note: ball_pred in actor_obs has a 1-step recording lag vs ball_pred raw key,
+#       but the C++ deploy ObservationManager uses the predictor output directly,
+#       so this recording artefact does not affect deploy. Scale still 1.0.
+
+step_dt: 0.02
+
+# joint_ids_map: identity placeholder.
+# Policy joint order = obs_joint_ids (23 DoF subset of G1).
+# Real SDK mapping (Project B) fills non-identity values here.
+joint_ids_map: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
+
+# Project B fills real kp/kd for G1 23-DoF joints.
+stiffness: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+damping:   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+# 23-DoF default joint positions (radians), from meta['default_joint_pos'] in ref.npz.
+# Order: obs_joint_ids (same as policy joint order).
+default_joint_pos: [-0.312, 0.0, 0.0, 0.669, -0.363, 0.0, -0.312, 0.0, 0.0, 0.669, -0.363, 0.0, 0.0, 0.2, 0.2, 0.0, 0.6, 0.0, 0.2, -0.2, 0.0, 0.6, 0.0]
+
+actions:
+  JointPositionAction:
+    # action_scale=0.25 from training config; output = scale*action_net + offset.
+    scale: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+    offset: [-0.312, 0.0, 0.0, 0.669, -0.363, 0.0, -0.312, 0.0, 0.0, 0.669, -0.363, 0.0, 0.0, 0.2, 0.2, 0.0, 0.6, 0.0, 0.2, -0.2, 0.0, 0.6, 0.0]
+    clip: null
+    joint_ids: null
+
+observations:
+  obs:  # group name MUST match policy.onnx input name ("obs")
+    use_gym_history: true  # C++ ObsManager: outer=history, inner=terms (frame-major, matches actor_obs layout)
+
+    # Term order MUST match single-frame layout (87 dims per frame):
+    # [0:3] base_ang_vel | [3:6] projected_gravity | [6:29] joint_pos_rel |
+    # [29:52] joint_vel_rel | [52:75] last_action | [75:81] tt_ball_perception |
+    # [81:84] tt_ball_prediction | [84:86] tt_rel_target_xy | [86:87] tt_heading
+
+    base_ang_vel:
+      scale: [1.0, 1.0, 1.0]
+      history_length: 5
+
+    projected_gravity:
+      scale: [1.0, 1.0, 1.0]
+      history_length: 5
+
+    joint_pos_rel:
+      scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      history_length: 5
+
+    joint_vel_rel:
+      scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      history_length: 5
+
+    last_action:
+      scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      history_length: 5
+
+    tt_ball_perception:
+      scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      history_length: 5
+
+    tt_ball_prediction:
+      scale: [1.0, 1.0, 1.0]
+      history_length: 5
+
+    tt_rel_target_xy:
+      scale: [1.0, 1.0]
+      history_length: 5
+
+    tt_heading:
+      scale: [1.0]
+      history_length: 5
