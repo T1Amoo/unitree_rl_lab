@@ -22,8 +22,14 @@ link_libraries(
 file(GLOB_RECURSE ADD_SRC_LIST
   ${PROJECT_SOURCE_DIR}/src/*.cpp
 )
+# tt_replay_main.cpp has its own main() and is built as a standalone executable;
+# keep it out of the shared library to avoid a duplicate main symbol.
+list(REMOVE_ITEM ADD_SRC_LIST ${PROJECT_SOURCE_DIR}/src/tt_replay_main.cpp)
 
 add_library(${PROJECT_NAME}_lib ${ADD_SRC_LIST})
 link_libraries(${PROJECT_NAME}_lib)
 
 add_executable(g1_ctrl main.cpp)
+
+add_executable(tt_replay src/tt_replay_main.cpp)
+target_include_directories(tt_replay PRIVATE include)

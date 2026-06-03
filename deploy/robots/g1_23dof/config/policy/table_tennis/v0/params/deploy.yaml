@@ -38,37 +38,55 @@ observations:
     # [81:84] tt_ball_prediction | [84:86] tt_rel_target_xy | [86:87] tt_heading
 
     base_ang_vel:
+      params: {}
+      clip: null
       scale: [1.0, 1.0, 1.0]
       history_length: 5
 
     projected_gravity:
+      params: {}
+      clip: null
       scale: [1.0, 1.0, 1.0]
       history_length: 5
 
     joint_pos_rel:
+      params: {}
+      clip: null
       scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
       history_length: 5
 
     joint_vel_rel:
+      params: {}
+      clip: null
       scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
       history_length: 5
 
     last_action:
+      params: {}
+      clip: null
       scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
       history_length: 5
 
     tt_ball_perception:
+      params: {}
+      clip: null
       scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
       history_length: 5
 
     tt_ball_prediction:
+      params: {}
+      clip: null
       scale: [1.0, 1.0, 1.0]
       history_length: 5
 
     tt_rel_target_xy:
+      params: {}
+      clip: null
       scale: [1.0, 1.0]
       history_length: 5
 
     tt_heading:
+      params: {}
+      clip: null
       scale: [1.0]
       history_length: 5
