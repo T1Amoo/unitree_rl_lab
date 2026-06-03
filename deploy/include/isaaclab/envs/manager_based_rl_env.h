@@ -75,6 +75,11 @@ public:
     std::unique_ptr<Algorithms> alg;
     long episode_length = 0;
     float global_phase = 0.0f;
+
+    // table-tennis perception (set by the active TTBallSource each control step)
+    Eigen::Vector3f tt_ball_pos = Eigen::Vector3f::Zero();        // ball pos (table frame), env-local
+    Eigen::Vector3f tt_robot_pos = Eigen::Vector3f::Zero();       // robot base pos rel table
+    Eigen::Vector3f tt_ball_prediction = Eigen::Vector3f::Zero(); // filled by predictor each step
 };
 
 };
