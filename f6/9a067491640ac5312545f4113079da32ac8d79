@@ -1,0 +1,23 @@
+deploy/include/isaaclab/envs/manager_based_rl_env.h
+  s_2d92d93564222b::t_da4aff7cccdc41 78-82
+deploy/robots/g1_23dof/include/tt_predictor.h
+  s_2d92d93564222b::t_95dfc553826cd1 1-30
+deploy/robots/g1_23dof/include/tt_ball_source.h
+  s_2d92d93564222b::t_83f860d96aaee2 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f69a067491640ac5312545f4113079da32ac8d79",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
