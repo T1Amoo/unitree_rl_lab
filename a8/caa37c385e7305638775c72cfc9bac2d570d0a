@@ -1,0 +1,21 @@
+deploy/robots/g1_23dof/config/policy/table_tennis/v0/params/deploy.yaml
+  s_2d92d93564222b::t_7d3307c086ed3a 1-74
+deploy/robots/g1_23dof/config/policy/table_tennis/v0/infer_scales.py
+  s_2d92d93564222b::t_643b37b36a8496 1-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8caa37c385e7305638775c72cfc9bac2d570d0a",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
