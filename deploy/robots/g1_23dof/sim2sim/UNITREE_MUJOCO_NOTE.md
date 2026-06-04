@@ -8,7 +8,13 @@
 - **Deploy**: `State_TableTennis` FSM state + `RosBallSource` (subscribes `/mocap/ball/pose`, `/mocap/base/pose`); `g1_ctrl` runs on DDS domain 1; predictor.onnx runs live. Real PD gains in `deploy.yaml`.
 
 ## unitree_mujoco config (already edited in the clone, NOT under git)
-`simulate_python/config.py`: `ROBOT="g1"`, `ROBOT_SCENE=<abs path to scene/g1_23dof_tt_scene.xml>`, `DOMAIN_ID=1`, `INTERFACE="lo"`, `USE_JOYSTICK=0`.
+`simulate_python/config.py`: `ROBOT="g1"`, `ROBOT_SCENE=<abs path to scene/g1_23dof_tt_scene.xml>`, `DOMAIN_ID=1`, `INTERFACE="lo"`, `USE_JOYSTICK=1` (`JOYSTICK_TYPE="xbox"`, `JOYSTICK_DEVICE=0`).
+
+**Gamepad required to drive the FSM.** Plug in the pad BEFORE launching the sim and confirm the PC sees it:
+```bash
+ls /dev/input/js*          # expect js0
+```
+If the pad uses the Switch layout, set `JOYSTICK_TYPE="switch"`. If it's not `js0`, set `JOYSTICK_DEVICE` accordingly. No `/dev/input/js*` ⇒ the PC does not recognize the pad (e.g. a controller that only pairs with the robot) ⇒ the sim can't read it; fall back to a keyboard WirelessController helper.
 
 ## Build the deploy (the documented `cmake .. && make` does NOT work here)
 The conda gcc-14 toolchain conflicts with the /usr/local unitree SDK, and `fmt` must
@@ -37,6 +43,6 @@ Then drive the FSM: `[L2 + Up]` → FixStand, then `[R1 + Y]` → TableTennis. (
 ## Known risks / fallbacks
 - **DDS cross-process discovery on `lo`**: cyclonedds disables multicast on loopback (`"lo" is not multicast-capable`). Within one process it works; if the sim and deploy do NOT see each other's topics/LowState, export in BOTH shells:
   `export CYCLONEDDS_URI=file://<abs path>/sim2sim/cyclonedds_loopback.xml`
-- **FSM input without a gamepad**: transitions are gamepad chords (`L2+Up`, `R1+Y`). If no pad: set `USE_JOYSTICK=1` + connect a pad, OR check `deploy/include/isaaclab/devices/keyboard` for a keyboard binding, OR temporarily auto-advance the FSM in main.cpp for the sim (document + revert before hardware).
+- **FSM input = gamepad** (`USE_JOYSTICK=1`). Plug the pad in before launching; verify `ls /dev/input/js*`. Drive: `[L2+Up]`→FixStand, `[R1+Y]`→TableTennis, `[L2+B]`→Passive. If the pad isn't recognized by the PC, fall back to a keyboard WirelessController publisher (sim-only, no FSM change).
 - **Uncontrolled robot collapses** until you enter FixStand/TableTennis — expected.
 - **sim2sim physics gap vs IsaacSim** is expected (mujoco contacts/restitution/motor model differ). Goal: sensible motion + returns some serves, not 97% reproduction.
