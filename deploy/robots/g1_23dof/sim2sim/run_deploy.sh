@@ -5,6 +5,11 @@
 # DDS domain is 1 (set in main.cpp); pass --network lo.
 set -euo pipefail
 BUILD="$(cd "$(dirname "${BASH_SOURCE[0]}")/../build" && pwd)"
+# Kill any previous g1_ctrl first. The deploy's init_fsm_state() detects another
+# lowcmd writer and calls go2::shutdown() then keeps running on a dead DDS handle
+# (the exit(0) is commented out) -> segfault / "cannot connect". One instance only.
+pkill -9 -f "build/g1_ctrl" 2>/dev/null || true
+sleep 1
 conda run -n g1tt_sim2sim bash -c "
   export LD_LIBRARY_PATH=\$CONDA_PREFIX/lib:/usr/local/lib:\${LD_LIBRARY_PATH:-}
   cd '$BUILD'
