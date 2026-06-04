@@ -1,0 +1,33 @@
+deploy/robots/g1_23dof/main.cpp
+  s_2d92d93564222b::t_663a8729f40d96 5-6
+  s_2d92d93564222b::t_e58c9a9f836c96 38,47-49
+  s_2d92d93564222b::t_0cec25f69def71 56
+deploy/robots/g1_23dof/CMakeLists.txt
+  s_2d92d93564222b::t_ed68ea9993fd2d 37
+  s_2d92d93564222b::t_3dc65978b7ed36 6-7,16-17
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_2d92d93564222b::t_dc3da79d18712a 6
+  s_2d92d93564222b::t_097527dab9dee6 1-5,7-103
+deploy/robots/g1_23dof/config/config.yaml
+  s_2d92d93564222b::t_2ad17f2ab23fab 10-12
+  s_2d92d93564222b::t_b2034c5a457797 31,34
+  s_2d92d93564222b::t_f389535474edbf 60-64,66
+deploy/robots/g1_23dof/include/tt_ros_ball_source.h
+  s_2d92d93564222b::t_0eb2591e2984ed 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69922c213616fa69991cd177507e5b84da5ba719",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
