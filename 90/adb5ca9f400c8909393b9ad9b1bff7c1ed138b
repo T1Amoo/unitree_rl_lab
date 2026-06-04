@@ -1,0 +1,22 @@
+docs/superpowers/specs/2026-06-04-g1-tt-sim2sim-design.md
+  s_2d92d93564222b::t_36185f66f9684c 76
+  s_2d92d93564222b::t_642da6891027fd 33-40
+  s_2d92d93564222b::t_993e2d3e000e6a 50-51
+  s_2d92d93564222b::t_a80f1a6065eddc 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "90adb5ca9f400c8909393b9ad9b1bff7c1ed138b",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
