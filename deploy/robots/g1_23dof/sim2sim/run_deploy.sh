@@ -10,8 +10,8 @@ BUILD="$(cd "$(dirname "${BASH_SOURCE[0]}")/../build" && pwd)"
 # (the exit(0) is commented out) -> segfault / "cannot connect". One instance only.
 pkill -9 -f "build/g1_ctrl" 2>/dev/null || true
 sleep 1
-conda run -n g1tt_sim2sim bash -c "
+conda run --no-capture-output -n g1tt_sim2sim bash -c "
   export LD_LIBRARY_PATH=\$CONDA_PREFIX/lib:/usr/local/lib:\${LD_LIBRARY_PATH:-}
   cd '$BUILD'
-  exec ./g1_ctrl --network lo \"\$@\"
+  exec stdbuf -oL -eL ./g1_ctrl --network lo \"\$@\"
 " -- "$@"
