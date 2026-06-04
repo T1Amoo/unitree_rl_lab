@@ -60,10 +60,10 @@ class _Band:
     robot upright instead of spinning like a tetherball. Applied as an external
     wrench on torso_link via xfrc_applied. Stiff so it holds torso ~at `point`."""
     def __init__(self, point):
-        self.kp_pos = 8000.0
-        self.kd_pos = 800.0
-        self.kp_ang = 800.0
-        self.kd_ang = 40.0
+        self.kp_pos = 3000.0
+        self.kd_pos = 300.0
+        self.kp_ang = 500.0
+        self.kd_ang = 30.0
         self.point = np.array(point, dtype=float)
         self.enable = True
 
@@ -206,9 +206,11 @@ def run(headless_steps=None):
 
     # 6-DOF elastic suspension on torso_link: holds the robot upright in the air
     # (force + angular restoring) so it neither free-falls nor spins. Anchored
-    # above the robot's start spot (x=-1.6, behind the table) at ~standing height.
+    # above the robot's start spot (x=-1.6, behind table); z=1.5 hangs the feet
+    # ~0.6 m OFF the ground so there is no foot contact (no NaN/reset loop) while
+    # suspended. Lower with key 8 until feet near floor, then release with 9.
     band_link = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso_link")
-    band = _Band(point=[float(data.xpos[band_link][0]), float(data.xpos[band_link][1]), 1.05])
+    band = _Band(point=[float(data.xpos[band_link][0]), float(data.xpos[band_link][1]), 1.5])
 
     keyfsm = _KeyFSM(band=band)
     keyfsm.start()
