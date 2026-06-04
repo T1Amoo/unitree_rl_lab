@@ -11,6 +11,10 @@ Domain 1, loopback. Run with --headless N to run N control steps with no viewer
 import sys
 import time
 import argparse
+import termios
+import tty
+import select
+import threading
 import numpy as np
 import mujoco
 import mujoco.viewer
@@ -34,6 +38,62 @@ DECIMATION = 10          # 50 Hz control / mocap publish
 def _ball_addrs(model):
     jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "ball_free")
     return model.jnt_qposadr[jid], model.jnt_dofadr[jid]
+
+
+class _KeyFSM:
+    """Reads single keypresses from the terminal and writes the matching FSM
+    transition chord into LowState.wireless_remote, replicating the bridge's
+    bit-packing (byte2=[0,0,LT,RT,SELECT,START,LB,RB], byte3=[left,down,right,up,Y,X,B,A]).
+    The bridge leaves wireless_remote untouched when no real joystick is set up,
+    so these writes are what the deploy parses as `lowstate->joystick`.
+    Keys: f=FixStand(LT+Up), g=TableTennis(RB+Y), p=Passive(LT+B), q=quit.
+    """
+    CHORDS = {
+        "f": (0x20, 0x10),  # LT + up   -> FixStand
+        "g": (0x01, 0x08),  # RB + Y    -> TableTennis
+        "p": (0x20, 0x02),  # LT + B    -> Passive
+    }
+
+    def __init__(self, hold_steps=60):
+        self.b2 = 0
+        self.b3 = 0
+        self.ttl = 0
+        self.hold = hold_steps
+        self.quit = False
+        self._lock = threading.Lock()
+
+    def start(self):
+        threading.Thread(target=self._reader, daemon=True).start()
+
+    def _reader(self):
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            while not self.quit:
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    c = sys.stdin.read(1)
+                    if c == "q":
+                        self.quit = True
+                    elif c in self.CHORDS:
+                        with self._lock:
+                            self.b2, self.b3 = self.CHORDS[c]
+                            self.ttl = self.hold
+                        print(f"[tt_sim] key '{c}' -> chord ({self.b2:#04x},{self.b3:#04x})")
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+    def apply(self, low_state):
+        # Called every physics step. Holds the chord for `hold` steps then releases
+        # (0,0) so the deploy's `.on_pressed` edge fires exactly once per keypress.
+        with self._lock:
+            if self.ttl > 0:
+                low_state.wireless_remote[2] = self.b2
+                low_state.wireless_remote[3] = self.b3
+                self.ttl -= 1
+            else:
+                low_state.wireless_remote[2] = 0
+                low_state.wireless_remote[3] = 0
 
 
 def run(headless_steps=None):
@@ -99,9 +159,14 @@ def run(headless_steps=None):
         rclpy.shutdown()
         return
 
+    keyfsm = _KeyFSM()
+    keyfsm.start()
+    print("[tt_sim] keyboard FSM (type in THIS terminal): "
+          "'f'=FixStand(L2+Up)  'g'=TableTennis(R1+Y)  'p'=Passive  'q'=quit")
     with mujoco.viewer.launch_passive(model, data) as viewer:
-        while viewer.is_running():
+        while viewer.is_running() and not keyfsm.quit:
             mujoco.mj_step(model, data)
+            keyfsm.apply(bridge.low_state)
             phys_count += 1
             if phys_count % DECIMATION == 0:
                 control_tick()
