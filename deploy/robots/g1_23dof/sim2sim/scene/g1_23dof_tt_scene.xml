@@ -316,5 +316,11 @@
     <framequat name="imu_quat" objtype="site" objname="imu_in_pelvis"/>
     <gyro name="imu_gyro" site="imu_in_pelvis"/>
     <accelerometer name="imu_acc" site="imu_in_pelvis"/>
+    <!-- frame_pos REQUIRED: unitree_mujoco bridge only sets have_frame_sensor_ (which
+         gates IMU quaternion/gyro/accel publishing) when a sensor named "frame_pos"
+         exists. Without it the bridge AttributeErrors and never publishes IMU.
+         These also feed PublishHighState at sensordata[dim_motor_sensor+10..15]. -->
+    <framepos name="frame_pos" objtype="site" objname="imu_in_pelvis"/>
+    <framelinvel name="frame_vel" objtype="site" objname="imu_in_pelvis"/>
   </sensor>
 </mujoco>

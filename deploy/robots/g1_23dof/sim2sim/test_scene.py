@@ -78,3 +78,13 @@ def test_ball_bounces_on_table_near_restitution():
             zmax_after = max(zmax_after, z)
     ratio = zmax_after / h0
     assert 0.5 < ratio < 0.95, f"bounce height ratio {ratio:.2f} out of band"
+
+
+def test_frame_pos_sensor_present_for_bridge_imu():
+    # unitree_mujoco bridge only enables IMU publishing if a sensor named
+    # "frame_pos" exists (it sets have_frame_sensor_ on that name).
+    model = mujoco.MjModel.from_xml_path(SCENE)
+    names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_SENSOR, i) for i in range(model.nsensor)]
+    assert "frame_pos" in names, "bridge needs a sensor named frame_pos to publish IMU"
+    # 69 joint + quat4 + gyro3 + accel3 + framepos3 + framelinvel3 = 85
+    assert model.nsensordata >= 85, f"expected >=85 sensordata, got {model.nsensordata}"
