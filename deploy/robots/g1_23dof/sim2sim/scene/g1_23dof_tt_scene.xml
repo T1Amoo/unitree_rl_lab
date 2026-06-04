@@ -30,7 +30,7 @@
     <mesh name="right_shoulder_yaw_link" file="right_shoulder_yaw_link.STL"/>
     <mesh name="right_elbow_link" file="right_elbow_link.STL"/>
     <mesh name="right_wrist_roll_rubber_hand" file="right_wrist_roll_rubber_hand.STL"/>
-    <mesh name="tt_paddle" file="tt_paddle.stl"/>
+    <mesh name="tt_paddle" file="tt_paddle.stl" scale="0.001 0.001 0.001"/>
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
     <texture name="grid" type="2d" builtin="checker" rgb1=".1 .2 .3" rgb2=".2 .3 .4" width="300" height="300"/>
     <material name="grid" texture="grid" texrepeat="8 8" reflectance="0.2"/>

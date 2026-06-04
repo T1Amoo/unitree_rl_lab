@@ -9,6 +9,7 @@ Domain 1, loopback. Run with --headless N to run N control steps with no viewer
 (for validation); otherwise opens the MuJoCo viewer.
 """
 import sys
+import os
 import time
 import argparse
 import termios
@@ -102,6 +103,10 @@ class _KeyFSM:
 
     def _reader(self):
         fd = sys.stdin.fileno()
+        if not os.isatty(fd):
+            print("[tt_sim] WARNING: stdin is not a TTY -> keyboard FSM disabled. "
+                  "Run via run_sim.sh (conda run --no-capture-output).", flush=True)
+            return
         old = termios.tcgetattr(fd)
         try:
             tty.setcbreak(fd)
