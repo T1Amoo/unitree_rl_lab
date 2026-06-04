@@ -16,8 +16,8 @@
   每步:                                                 - 关节+IMU ← LowState (unitree_sdk2 DDS)
    - 步进 mujoco                                         - 球+基体位姿 ← ROS2 订阅(RosBallSource)
    - 发 LowState / 收 LowCmd  ──DDS(domain 1)──►        - predictor.onnx 实时跑
-   - 读 mjData 球+躯干位姿/速度                          - obs 拼装(项目A的 obs项/deploy.yaml)
-   - rclpy 发布 PoseStamped/TwistStamped ──ROS2──►       - policy.onnx → LowCmd ──DDS──►
+   - 读 mjData 球+躯干位姿                          - obs 拼装(项目A的 obs项/deploy.yaml)
+   - rclpy 发布 PoseStamped(球/基体)──ROS2──►       - policy.onnx → LowCmd ──DDS──►
 ```
 - **数据分工**:关节/IMU 走 unitree_sdk2 DDS(LowState);球+基体位姿走 ROS2 mocap topic。与真机一致。
 - **seam**:deploy 的 `TTBallSource` → sim 用 `RosBallSource`(订阅 ROS2);真机也用 `RosBallSource`(Nokov 发同样 topic)——**deploy 一行不改**即可上真机。
@@ -30,10 +30,14 @@ ROS2 Humble(robostack)+ mujoco + unitree_sdk2_python + cyclonedds + pygame + onn
 | 数据 | topic(占位) | 类型 | 说明 |
 |---|---|---|---|
 | 球位姿 | `/mocap/ball/pose` | PoseStamped | 球 3D 位置(球桌坐标系) |
-| 球速度 | `/mocap/ball/twist` | TwistStamped | 球线速度 |
-| 基体位姿 | `/mocap/base/pose` | PoseStamped | 躯干位置+朝向 |
-| 基体速度 | `/mocap/base/twist` | TwistStamped | 躯干速度 |
-frame_id 用球桌坐标系(与训练 obs 一致:ball_pos=ball-table、robot_pos=trunk-table)。obs 取用:ball_pos←ball/pose;robot_pos←base/pose.position;heading←base/pose.orientation→yaw。topic 名/frame 真机确定后统一改。
+| 基体位姿 | `/mocap/base/pose` | PoseStamped | 躯干位置 + 朝向 |
+
+**只需位置,不需速度**(已核实 `tt_env.compute_perception`:`current_perception=[ball_pos, robot_pos]`,`ball_linvel` 被注释;actor obs 无球速/基体线速度,ang_vel 来自 IMU/LowState)。**球速度由 predictor 从位置历史内部推断**,故无 ball/twist;基体线速度 obs 不用,故无 base/twist。
+obs 取用:`ball_pos←ball/pose.position`;`robot_pos←base/pose.position`;`heading←base/pose.orientation→yaw`(或 IMU,见 §8)。frame=球桌坐标系(训练 obs:ball_pos=ball-table、robot_pos=trunk-table)。topic 名/frame 真机定后统一改。
+
+**predictor I/O**(实时跑在 deploy 内):输入 15 维 = 最近 5 帧 `ball_pos`(3×5,oldest→newest);输出 3 维 = 预测未来击球点(球桌坐标系)。无速度输入。
+
+**训练噪声**:`add_noise=True`,perception(球/基体位置)σ=0.007(~7mm)、ang_vel 0.2、joint_vel 1.5、joint_pos 0.01、gravity 0.05。策略对 ~7mm 位置噪声鲁棒 → 真机 mocap 噪声在包络内,sim 给干净位置 OK;**deploy 不加噪声**(噪声仅训练增强)。
 
 ## 5. 三个里程碑
 
@@ -43,8 +47,8 @@ clone unitree_mujoco,用 `simulate_python/`,配 G1 场景(先 stock g1_23dof MJC
 ### B2 — TT 场景 + 发球 + ROS2 发布
 - **场景 MJCF**:基于 `g1_23dof_rev_1_0.xml` 加:球拍(右腕加适配杆+拍面 geom,几何沿用 URDF 那套,restitution 材质)、球桌(MJCF 板块+网,尺寸对齐 IsaacSim:台高 0.76、自/对台 x∈∓1.37、网 x=0)、球(sphere r0.02、3.4g、restitution 0.9)。物理对齐 IsaacSim(拍 0.8/球 0.9,combine)。
 - **发球控制器**(Python):按训练 serve range(`ball_speed_x/y/z`、`ball_pos_y_range`)定期重置球 qpos/qvel 朝机器人发,复刻 `reset_ball` 节奏。
-- **ROS2 发布**(rclpy,在 sim 循环内):每步读 mjData 球+躯干 → 发 PoseStamped/TwistStamped。
-- 验证:rostopic echo 看到球/基体位姿;发球轨迹合理。
+- **ROS2 发布**(rclpy,在 sim 循环内):每步读 mjData 球+躯干位姿 → 发 `/mocap/ball/pose`、`/mocap/base/pose`(PoseStamped)。
+- 验证:`ros2 topic echo` 看到球/基体位姿;发球轨迹合理。
 
 ### B3 — 实时 TableTennis 状态 + RosBallSource → 打球
 - C++ deploy 加 **TableTennis FSM 状态**(复用项目 A:tt_observations 4 项、tt_predictor、deploy.yaml;predictor 实时跑)。
@@ -69,3 +73,4 @@ clone unitree_mujoco,用 `simulate_python/`,配 G1 场景(先 stock g1_23dof MJC
 - **mujoco G1 电机/增益**:LowCmd 的 kp/kd 要在 mujoco 里产生合理力矩(unitree_mujoco 用 PD on torque);与 IsaacSim implicit actuator 不同,可能要调。
 - **sim2sim 物理差距**:接触/restitution 调到接近 IsaacSim,但本质不同,差距预期内。
 - 真机 topic 名/frame 未定 → 用占位,后续统一。
+- **heading 来源**:训练用机器人 root 朝向。deploy 可取自 IMU(LowState 四元数)或 mocap `base/pose.orientation`。B3 选一种并与训练 frame 对齐(默认 base/pose.orientation→yaw,与 robot_pos 同源 mocap)。
