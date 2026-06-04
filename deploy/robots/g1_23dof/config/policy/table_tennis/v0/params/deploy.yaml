@@ -12,9 +12,11 @@ step_dt: 0.02
 # Real SDK mapping (Project B) fills non-identity values here.
 joint_ids_map: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
 
-# Project B fills real kp/kd for G1 23-DoF joints.
-stiffness: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-damping:   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+# PD gains from training implicit actuator model (Pingpong g1.py): NF=10*2pi, zeta=2.
+# Order = policy/obs joint order. legs hip_pitch/yaw=7520_14, hip_roll/knee=7520_22,
+# ankle=2x5020, waist_yaw=7520_22, arms=5020.
+stiffness: [40.18, 99.09, 40.18, 99.09, 28.50, 28.50, 40.18, 99.09, 40.18, 99.09, 28.50, 28.50, 99.09, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25]
+damping:   [2.558, 6.309, 2.558, 6.309, 1.814, 1.814, 2.558, 6.309, 2.558, 6.309, 1.814, 1.814, 6.309, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907]
 
 # 23-DoF default joint positions (radians), from meta['default_joint_pos'] in ref.npz.
 # Order: obs_joint_ids (same as policy joint order).
