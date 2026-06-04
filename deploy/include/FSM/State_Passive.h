@@ -26,10 +26,14 @@ public:
     {
         // set gain
         static auto kd = param::config["FSM"]["Passive"]["kd"].as<std::vector<float>>();
+        auto kp_node = param::config["FSM"]["Passive"]["kp"];
+        static std::vector<float> kp = kp_node.IsDefined()
+            ? kp_node.as<std::vector<float>>()
+            : std::vector<float>(kd.size(), 0.0f);
         for(int i(0); i < kd.size(); ++i)
         {
             auto & motor = lowcmd->msg_.motor_cmd()[i];
-            motor.kp() = 0;
+            motor.kp() = (i < (int)kp.size()) ? kp[i] : 0.0f;
             motor.kd() = kd[i];
             motor.dq() = 0;
             motor.tau() = 0;
