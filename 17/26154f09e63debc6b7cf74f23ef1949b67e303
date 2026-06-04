@@ -1,0 +1,21 @@
+deploy/robots/g1_23dof/config/config.yaml
+  s_2d92d93564222b::t_5d39e230e5df10 7-12
+deploy/robots/g1_23dof/sim2sim/run_deploy.sh
+  s_2d92d93564222b::t_812fa02b7485de 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1726154f09e63debc6b7cf74f23ef1949b67e303",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
