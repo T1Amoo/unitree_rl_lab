@@ -1,0 +1,19 @@
+deploy/robots/g1_23dof/config/policy/table_tennis/v0/params/deploy.yaml
+  s_2d92d93564222b::t_629b8a3838e902 15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "03097b5292c160c19f8b0e8060ccca028cf0241d",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
