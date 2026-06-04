@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- CycloneDDS loopback config for sim2sim on a single host.
+     The `lo` interface is not multicast-capable, so discovery falls back to
+     unicast. This config pins CycloneDDS to localhost and enables the loopback
+     interface so the Python sim and the C++ deploy (both DDS domain 1) discover
+     each other across processes. Use only if the two processes fail to connect:
+       export CYCLONEDDS_URI=file://$PWD/cyclonedds_loopback.xml   (in BOTH shells) -->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface name="lo" priority="default" multicast="false"/>
+      </Interfaces>
+      <AllowMulticast>false</AllowMulticast>
+      <EnableMulticastLoopback>false</EnableMulticastLoopback>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <Peers>
+        <Peer address="localhost"/>
+      </Peers>
+    </Discovery>
+  </Domain>
+</CycloneDDS>
