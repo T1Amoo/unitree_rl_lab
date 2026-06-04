@@ -25,7 +25,7 @@ from ros_publish import MocapPublisher
 
 # unitree_mujoco bridge
 sys.path.insert(0, "/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_mujoco/simulate_python")
-from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand  # noqa: E402
+from unitree_sdk2py_bridge import UnitreeSdk2Bridge  # noqa: E402
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize  # noqa: E402
 
 SCENE = "/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/g1_23dof/sim2sim/scene/g1_23dof_tt_scene.xml"
@@ -38,6 +38,39 @@ DECIMATION = 10          # 50 Hz control / mocap publish
 def _ball_addrs(model):
     jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "ball_free")
     return model.jnt_qposadr[jid], model.jnt_dofadr[jid]
+
+
+def _quat_to_rotvec(quat):
+    """MuJoCo quat (w,x,y,z) -> rotation vector (axis*angle). Restoring this to
+    zero keeps the body at its spawn orientation (upright)."""
+    w, x, y, z = float(quat[0]), float(quat[1]), float(quat[2]), float(quat[3])
+    v = np.array([x, y, z])
+    n = np.linalg.norm(v)
+    if n < 1e-8:
+        return np.zeros(3)
+    angle = 2.0 * np.arctan2(n, w)
+    if angle > np.pi:
+        angle -= 2.0 * np.pi
+    return (angle / n) * v
+
+
+class _Band:
+    """6-DOF virtual suspension (force + angular restoring), GR00T-WholeBodyControl
+    style. Unlike unitree's force-only band, the angular term keeps the hanging
+    robot upright instead of spinning like a tetherball. Applied as an external
+    wrench on torso_link via xfrc_applied. Stiff so it holds torso ~at `point`."""
+    def __init__(self, point):
+        self.kp_pos = 8000.0
+        self.kd_pos = 800.0
+        self.kp_ang = 800.0
+        self.kd_ang = 40.0
+        self.point = np.array(point, dtype=float)
+        self.enable = True
+
+    def wrench(self, pos, quat, lin_vel, ang_vel):
+        f = self.kp_pos * (self.point - pos) - self.kd_pos * lin_vel
+        tau = -self.kp_ang * _quat_to_rotvec(quat) - self.kd_ang * ang_vel
+        return np.concatenate([f, tau])
 
 
 class _KeyFSM:
@@ -84,11 +117,11 @@ class _KeyFSM:
                         print(f"[tt_sim] key '{c}' -> chord ({self.b2:#04x},{self.b3:#04x})")
                     elif self.band is not None and c in ("7", "8", "9"):
                         if c == "8":
-                            self.band.length += 0.1
-                            print(f"[tt_sim] band lower, length={self.band.length:.2f}")
+                            self.band.point[2] -= 0.1
+                            print(f"[tt_sim] band lower, anchor_z={self.band.point[2]:.2f}")
                         elif c == "7":
-                            self.band.length -= 0.1
-                            print(f"[tt_sim] band raise, length={self.band.length:.2f}")
+                            self.band.point[2] += 0.1
+                            print(f"[tt_sim] band raise, anchor_z={self.band.point[2]:.2f}")
                         else:
                             self.band.enable = not self.band.enable
                             print(f"[tt_sim] band enable={self.band.enable} (9=toggle release)")
@@ -171,27 +204,26 @@ def run(headless_steps=None):
         rclpy.shutdown()
         return
 
-    # Elastic band: a virtual spring on torso_link that suspends the robot in the
-    # air so it does not free-fall/explode before a controller engages. Start the
-    # deploy, FixStand (f) then TableTennis (g) while suspended; key 8 lowers the
-    # robot toward the floor, key 9 releases the band so the active policy stands it.
-    band = ElasticBand()
+    # 6-DOF elastic suspension on torso_link: holds the robot upright in the air
+    # (force + angular restoring) so it neither free-falls nor spins. Anchored
+    # above the robot's start spot (x=-1.6, behind the table) at ~standing height.
     band_link = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso_link")
-    # Anchor the band directly ABOVE the robot's start spot (x=-1.6, behind the
-    # table), not above the world origin (x=0 = table center) — else the spring
-    # drags the robot onto the table. z=2.6 hangs the torso near standing height.
-    band.point = np.array([float(data.qpos[0]), float(data.qpos[1]), 2.6])
+    band = _Band(point=[float(data.xpos[band_link][0]), float(data.xpos[band_link][1]), 1.05])
 
     keyfsm = _KeyFSM(band=band)
     keyfsm.start()
     print("[tt_sim] keys (type in THIS terminal): "
           "f=FixStand  g=TableTennis  p=Passive | band: 8=lower 7=raise 9=release | q=quit")
+    _bvel = np.zeros(6)
     with mujoco.viewer.launch_passive(model, data) as viewer:
         while viewer.is_running() and not keyfsm.quit:
             if band.enable:
-                data.xfrc_applied[band_link, :3] = band.Advance(data.qpos[:3], data.qvel[:3])
+                mujoco.mj_objectVelocity(model, data, mujoco.mjtObj.mjOBJ_BODY,
+                                         band_link, _bvel, 0)  # world frame: [ang(3), lin(3)]
+                data.xfrc_applied[band_link] = band.wrench(
+                    data.xpos[band_link], data.xquat[band_link], _bvel[3:6], _bvel[0:3])
             else:
-                data.xfrc_applied[band_link, :3] = 0.0
+                data.xfrc_applied[band_link] = 0.0
             mujoco.mj_step(model, data)
             keyfsm.apply(bridge.low_state)
             phys_count += 1
