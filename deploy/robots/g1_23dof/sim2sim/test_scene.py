@@ -1,5 +1,6 @@
 import os
 import mujoco
+import numpy as np
 
 SCENE = os.path.join(os.path.dirname(__file__), "scene", "g1_23dof_tt_scene.xml")
 
@@ -53,3 +54,27 @@ def test_sensordata_length_covers_imu():
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
     assert model.nsensordata >= 79, f"expected >=79 sensordata, got {model.nsensordata}"
+
+
+def test_ball_bounces_on_table_near_restitution():
+    model = mujoco.MjModel.from_xml_path(SCENE)
+    data = mujoco.MjData(model)
+    bj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "ball_free")
+    adr = model.jnt_qposadr[bj]
+    h0 = 0.30
+    data.qpos[adr:adr+3] = [0.0, 0.0, 0.76 + h0]
+    data.qpos[adr+3:adr+7] = [1, 0, 0, 0]
+    mujoco.mj_forward(model, data)
+    vadr = model.jnt_dofadr[bj]
+    zmax_after = 0.0
+    bounced = False
+    for _ in range(4000):  # 8 s at dt=0.002
+        mujoco.mj_step(model, data)
+        z = data.qpos[adr+2] - 0.76
+        vz = data.qvel[vadr+2]
+        if not bounced and z < 0.025 and vz > 0:
+            bounced = True
+        if bounced:
+            zmax_after = max(zmax_after, z)
+    ratio = zmax_after / h0
+    assert 0.5 < ratio < 0.95, f"bounce height ratio {ratio:.2f} out of band"

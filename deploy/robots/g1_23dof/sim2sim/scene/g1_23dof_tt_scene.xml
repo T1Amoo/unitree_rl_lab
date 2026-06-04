@@ -188,12 +188,28 @@
                   <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-1.97222 1.97222" actuatorfrcrange="-25 25"/>
                   <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="right_wrist_roll_rubber_hand"/>
                   <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="right_wrist_roll_rubber_hand"/>
+                  <body name="tt_paddle" pos="0.337 0 0" quat="0.70710678 0.70710678 0 0">
+                    <geom name="paddle_visual" type="mesh" mesh="tt_paddle" contype="0" conaffinity="0" group="1" rgba="0.8 0.1 0.1 1" mass="0"/>
+                    <geom name="paddle_blade" type="box" size="0.075 0.085 0.004" contype="1" conaffinity="1" rgba="0.8 0.1 0.1 0.4" mass="0.25"
+                          friction="0.6 0.005 0.0001" solref="0.002 1" solimp="0.95 0.99 0.001"/>
+                  </body>
                 </body>
               </body>
             </body>
           </body>
         </body>
       </body>
+    </body>
+    <body name="table" pos="0 0 0">
+      <geom name="table_top" type="box" pos="0 0 0.755" size="1.37 0.7625 0.005" rgba="0.1 0.3 0.6 1"
+            contype="1" conaffinity="1" friction="0.1 0.005 0.0001" solref="0.002 1" solimp="0.95 0.99 0.001"/>
+      <geom name="table_legs" type="box" pos="0 0 0.375" size="1.30 0.70 0.375" rgba="0.2 0.2 0.2 1" contype="1" conaffinity="1"/>
+    </body>
+    <geom name="net" type="box" pos="0 0 0.8375" size="0.01 0.7625 0.0775" rgba="0.9 0.9 0.9 0.5" contype="1" conaffinity="1"/>
+    <body name="ball" pos="1.35 0 1.03">
+      <freejoint name="ball_free"/>
+      <geom name="ball_geom" type="sphere" size="0.02" mass="0.0034" rgba="1 0 0 1"
+            contype="1" conaffinity="1" friction="0.1 0.005 0.0001" solref="0.002 1" solimp="0.95 0.99 0.001"/>
     </body>
   </worldbody>
   <actuator>
@@ -221,6 +237,12 @@
     <motor name="right_elbow_joint" joint="right_elbow_joint"/>
     <motor name="right_wrist_roll_joint" joint="right_wrist_roll_joint"/>
   </actuator>
+  <!-- Bounce contact pairs. Negative solref = (-stiffness, -damping); high stiffness + low damping ~ high restitution.
+       FINAL TUNED table-pair solref="-9000 -6" gives measured bounce ratio 0.90 (h0=0.30m), within [0.5,0.95] band. -->
+  <contact>
+    <pair geom1="ball_geom" geom2="table_top"   solref="-9000 -6"  solimp="0.95 0.99 0.001"/>
+    <pair geom1="ball_geom" geom2="paddle_blade" solref="-12000 -5" solimp="0.95 0.99 0.001"/>
+  </contact>
   <sensor>
     <jointpos name="left_hip_pitch_joint_pos" joint="left_hip_pitch_joint"/>
     <jointpos name="left_hip_roll_joint_pos" joint="left_hip_roll_joint"/>
