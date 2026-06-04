@@ -1,0 +1,20 @@
+deploy/robots/g1_23dof/sim2sim/tt_sim.py
+  s_2d92d93564222b::t_4d9d59100bc3cd 79-84,90-92,96-97
+  s_2d92d93564222b::t_1f5ee2dd5930cb 1-78,85-89,93-95,98-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b596d300eb9648affd18646cc10baffa7b11393e",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
