@@ -3,6 +3,8 @@ project(g1_29dof_controller)
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(yaml-cpp REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 include_directories(
   /usr/include/eigen3
@@ -11,6 +13,8 @@ include_directories(
   include
   ${PROJECT_SOURCE_DIR}/../../thirdparty/onnxruntime-linux-x64-1.22.0/include
   ${PROJECT_SOURCE_DIR}/../../include/
+  ${rclcpp_INCLUDE_DIRS}
+  ${geometry_msgs_INCLUDE_DIRS}
 )
 
 link_libraries(
@@ -30,6 +34,7 @@ add_library(${PROJECT_NAME}_lib ${ADD_SRC_LIST})
 link_libraries(${PROJECT_NAME}_lib)
 
 add_executable(g1_ctrl main.cpp)
+target_link_libraries(g1_ctrl ${rclcpp_LIBRARIES} ${geometry_msgs_LIBRARIES} fmt)
 
 add_executable(tt_replay src/tt_replay_main.cpp)
 target_include_directories(tt_replay PRIVATE include)

@@ -2,6 +2,8 @@
 #include "FSM/State_Passive.h"
 #include "FSM/State_FixStand.h"
 #include "FSM/State_RLBase.h"
+#include "FSM/State_TableTennis.h"
+#include <rclcpp/rclcpp.hpp>
 
 std::unique_ptr<LowCmd_t> FSMState::lowcmd = nullptr;
 std::shared_ptr<LowState_t> FSMState::lowstate = nullptr;
@@ -33,7 +35,7 @@ int main(int argc, char** argv)
     std::cout << "     G1-23dof Controller \n";
 
     // Unitree DDS Config
-    unitree::robot::ChannelFactory::Instance()->Init(0, vm["network"].as<std::string>());
+    unitree::robot::ChannelFactory::Instance()->Init(1, vm["network"].as<std::string>()); // domain 1 = unitree_mujoco sim2sim
 
     init_fsm_state();
 
@@ -42,13 +44,16 @@ int main(int argc, char** argv)
         spdlog::critical("Unmatched robot type.");
         exit(-1);
     }
-    
+
+    rclcpp::init(argc, argv);
+
     // Initialize FSM
     auto fsm = std::make_unique<CtrlFSM>(param::config["FSM"]);
     fsm->start();
 
     std::cout << "Press [L2 + Up] to enter FixStand mode.\n";
     std::cout << "And then press [R1 + X] to start controlling the robot.\n";
+    std::cout << "Press [R1 + Y] to enter TableTennis mode.\n";
 
     while (true)
     {
