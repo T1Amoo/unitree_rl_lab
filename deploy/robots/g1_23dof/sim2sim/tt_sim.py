@@ -177,6 +177,10 @@ def run(headless_steps=None):
     # robot toward the floor, key 9 releases the band so the active policy stands it.
     band = ElasticBand()
     band_link = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso_link")
+    # Anchor the band directly ABOVE the robot's start spot (x=-1.6, behind the
+    # table), not above the world origin (x=0 = table center) — else the spring
+    # drags the robot onto the table. z=2.6 hangs the torso near standing height.
+    band.point = np.array([float(data.qpos[0]), float(data.qpos[1]), 2.6])
 
     keyfsm = _KeyFSM(band=band)
     keyfsm.start()
