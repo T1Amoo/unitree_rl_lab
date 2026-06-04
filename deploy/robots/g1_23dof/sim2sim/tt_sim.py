@@ -25,7 +25,7 @@ from ros_publish import MocapPublisher
 
 # unitree_mujoco bridge
 sys.path.insert(0, "/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_mujoco/simulate_python")
-from unitree_sdk2py_bridge import UnitreeSdk2Bridge  # noqa: E402
+from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand  # noqa: E402
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize  # noqa: E402
 
 SCENE = "/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/g1_23dof/sim2sim/scene/g1_23dof_tt_scene.xml"
@@ -47,6 +47,7 @@ class _KeyFSM:
     The bridge leaves wireless_remote untouched when no real joystick is set up,
     so these writes are what the deploy parses as `lowstate->joystick`.
     Keys: f=FixStand(LT+Up), g=TableTennis(RB+Y), p=Passive(LT+B), q=quit.
+    Elastic-band (suspension) keys, if a band is attached: 8=lower, 7=raise, 9=release/grab.
     """
     CHORDS = {
         "f": (0x20, 0x10),  # LT + up   -> FixStand
@@ -54,12 +55,13 @@ class _KeyFSM:
         "p": (0x20, 0x02),  # LT + B    -> Passive
     }
 
-    def __init__(self, hold_steps=60):
+    def __init__(self, hold_steps=60, band=None):
         self.b2 = 0
         self.b3 = 0
         self.ttl = 0
         self.hold = hold_steps
         self.quit = False
+        self.band = band
         self._lock = threading.Lock()
 
     def start(self):
@@ -80,6 +82,16 @@ class _KeyFSM:
                             self.b2, self.b3 = self.CHORDS[c]
                             self.ttl = self.hold
                         print(f"[tt_sim] key '{c}' -> chord ({self.b2:#04x},{self.b3:#04x})")
+                    elif self.band is not None and c in ("7", "8", "9"):
+                        if c == "8":
+                            self.band.length += 0.1
+                            print(f"[tt_sim] band lower, length={self.band.length:.2f}")
+                        elif c == "7":
+                            self.band.length -= 0.1
+                            print(f"[tt_sim] band raise, length={self.band.length:.2f}")
+                        else:
+                            self.band.enable = not self.band.enable
+                            print(f"[tt_sim] band enable={self.band.enable} (9=toggle release)")
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
@@ -159,12 +171,23 @@ def run(headless_steps=None):
         rclpy.shutdown()
         return
 
-    keyfsm = _KeyFSM()
+    # Elastic band: a virtual spring on torso_link that suspends the robot in the
+    # air so it does not free-fall/explode before a controller engages. Start the
+    # deploy, FixStand (f) then TableTennis (g) while suspended; key 8 lowers the
+    # robot toward the floor, key 9 releases the band so the active policy stands it.
+    band = ElasticBand()
+    band_link = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso_link")
+
+    keyfsm = _KeyFSM(band=band)
     keyfsm.start()
-    print("[tt_sim] keyboard FSM (type in THIS terminal): "
-          "'f'=FixStand(L2+Up)  'g'=TableTennis(R1+Y)  'p'=Passive  'q'=quit")
+    print("[tt_sim] keys (type in THIS terminal): "
+          "f=FixStand  g=TableTennis  p=Passive | band: 8=lower 7=raise 9=release | q=quit")
     with mujoco.viewer.launch_passive(model, data) as viewer:
         while viewer.is_running() and not keyfsm.quit:
+            if band.enable:
+                data.xfrc_applied[band_link, :3] = band.Advance(data.qpos[:3], data.qvel[:3])
+            else:
+                data.xfrc_applied[band_link, :3] = 0.0
             mujoco.mj_step(model, data)
             keyfsm.apply(bridge.low_state)
             phys_count += 1
