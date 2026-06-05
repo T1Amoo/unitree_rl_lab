@@ -1,0 +1,21 @@
+deploy/robots/g1_23dof/sim2sim/tt_sim.py
+  s_2d92d93564222b::t_0e44cddffb986b 93-95,97,99-101,123,139-143,145-152,155,159
+deploy/include/FSM/State_Passive.h
+  s_2d92d93564222b::t_72b48d4dbcfc90 49-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "be10169771db70fa25fab8a3bc1942c0a8373d64",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
