@@ -103,7 +103,7 @@ init_qpos = mj_data.qpos.copy()
 
 # band gains (6-DOF: force + angular restoring), anchored above the robot start spot
 BAND_XY = (float(mj_data.xpos[band_link][0]), float(mj_data.xpos[band_link][1]))
-KP_POS, KD_POS, KP_ANG, KD_ANG = 3000.0, 300.0, 500.0, 30.0
+KP_POS, KD_POS, KP_ANG, KD_ANG = 3000.0, 700.0, 500.0, 70.0  # band gains (higher damping = steadier hang)
 _bvel = np.zeros(6)
 
 
