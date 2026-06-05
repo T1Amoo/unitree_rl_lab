@@ -188,10 +188,17 @@
                   <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-1.97222 1.97222" actuatorfrcrange="-25 25" armature="0.003610" damping="1.0" frictionloss="0.1"/>
                   <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="right_wrist_roll_rubber_hand"/>
                   <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="right_wrist_roll_rubber_hand"/>
-                  <body name="tt_paddle" pos="0.337 0 0" quat="0.70710678 0.70710678 0 0">
-                    <geom name="paddle_visual" type="mesh" mesh="tt_paddle" contype="0" conaffinity="0" group="1" rgba="0.8 0.1 0.1 1" mass="0"/>
-                    <geom name="paddle_blade" type="box" size="0.075 0.085 0.004" contype="1" conaffinity="1" rgba="0.8 0.1 0.1 0" mass="0.25"
-                          friction="0.6 0.005 0.0001" solref="0.002 1" solimp="0.95 0.99 0.001"/>
+                  <!-- Table-tennis paddle chain, matching training URDF g1_23dof_tt_paddle.urdf:
+                       wrist -> adapter mount -> extension rod (0.16m) -> holder (+90deg about X)
+                       -> paddle blade. Contact disk lands at wrist +X 0.337 (= training paddle_offset). -->
+                  <geom name="tt_mount" type="cylinder" size="0.025 0.006" pos="0.006 0 0" quat="0.70710678 0 0.70710678 0" contype="0" conaffinity="0" group="1" rgba="0.2 0.2 0.2 1" mass="0.03"/>
+                  <body name="tt_extension" pos="0.012 0 0">
+                    <geom name="tt_rod" type="cylinder" size="0.018 0.08" pos="0.08 0 0" quat="0.70710678 0 0.70710678 0" contype="0" conaffinity="0" group="1" rgba="0.2 0.2 0.2 1" mass="0.08"/>
+                    <body name="tt_holder" pos="0.16 0 0" quat="0.70710678 0.70710678 0 0">
+                      <geom name="paddle_visual" type="mesh" mesh="tt_paddle" pos="0 -0.00351 -0.00149" quat="0.70710678 0 0 -0.70710678" contype="0" conaffinity="0" group="1" rgba="0.8 0.1 0.1 1" mass="0.05"/>
+                      <geom name="paddle_blade" type="cylinder" size="0.075 0.0025" pos="0.165 0 0" quat="0.70710678 0 0.70710678 0" contype="0" conaffinity="0" rgba="0.8 0.1 0.1 0.5" mass="0.17"
+                            friction="0.6 0.005 0.0001" solref="0.002 1" solimp="0.95 0.99 0.001"/>
+                    </body>
                   </body>
                 </body>
               </body>

@@ -132,6 +132,8 @@ def SimulationThread():
     serve = Serve(interval_steps=150)
     ctrl_step = 0
     cnt = 0
+    last_reset = -100000
+    RESET_COOLDOWN = 750   # >=1.5 s between auto-resets so recovery (p/f) isn't fought
     print("[tt_sim] focus the MuJoCo window, then: f=FixStand g=TableTennis p=Passive | 8=lower 7=raise 9=release | q=quit", flush=True)
 
     while viewer.is_running() and not S["quit"]:
@@ -151,15 +153,19 @@ def SimulationThread():
         mujoco.mj_step(mj_model, mj_data)
         apply_chord(bridge.low_state)
 
-        # auto-reset on fall
-        if mj_data.qpos[pelvis_qadr + 2] < FALL_Z:
-            print(f"[tt_sim] FALL (pelvis z={mj_data.qpos[pelvis_qadr+2]:.2f}) -> reset + re-catch", flush=True)
+        # auto-reset on fall, with a cooldown so it does not spam-reset (which fights
+        # recovery). After a fall: press 'p' (Passive stops the policy, band holds it)
+        # then 'f'. Free-standing on the ground is the policy sim2sim gap.
+        if mj_data.qpos[pelvis_qadr + 2] < FALL_Z and (cnt - last_reset) > RESET_COOLDOWN:
+            print(f"[tt_sim] FALL (pelvis z={mj_data.qpos[pelvis_qadr+2]:.2f}) -> reset + re-catch "
+                  f"(press 'p' then 'f' to recover; policy can't free-stand in mujoco)", flush=True)
             mj_data.qpos[:] = init_qpos
             mj_data.qvel[:] = 0.0
             mj_data.xfrc_applied[:] = 0.0
             mujoco.mj_forward(mj_model, mj_data)
             S["band_z"] = BAND_Z0
             S["band_enable"] = True
+            last_reset = cnt
 
         cnt += 1
         # serve at the control rate (50 Hz)
