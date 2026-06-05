@@ -1,0 +1,22 @@
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_2d92d93564222b::t_9e139c074d135c 5
+  s_2d92d93564222b::t_bedeefb8130ef0 54-60
+  s_2d92d93564222b::t_a8067089f7a052 105-115
+  s_2d92d93564222b::t_3dcb0ee97e3c76 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "008486a9348dd1badb1bdd1b56d41e69153dfe2b",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
