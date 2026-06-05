@@ -1,0 +1,23 @@
+deploy/robots/g1_23dof/sim2sim/serve.py
+  s_2d92d93564222b::t_d2a23bf3747a17 15,17
+deploy/robots/g1_23dof/include/tt_predictor.h
+  s_2d92d93564222b::t_5f2249e38304cf 26-29
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_2d92d93564222b::t_ee66d19f1fbcb4 62-63,67-79,83-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "07a870ca6071e79eec74f67c78c01cd98615b44f",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
