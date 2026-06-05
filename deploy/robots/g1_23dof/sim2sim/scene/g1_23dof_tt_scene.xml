@@ -184,10 +184,10 @@
                 <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="right_elbow_link"/>
                 <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="right_elbow_link"/>
                 <body name="right_wrist_roll_rubber_hand" pos="0.1 -0.00188791 -0.01">
-                  <inertial pos="0.107947 -0.00163512 0.00202245" quat="0.516933 0.48416 0.504265 0.494051" mass="0.356929" diaginertia="0.00200292 0.0019426 0.000195232"/>
                   <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-1.97222 1.97222" actuatorfrcrange="-25 25" armature="0.003610" damping="1.0" frictionloss="0.1"/>
-                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="right_wrist_roll_rubber_hand"/>
-                  <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="right_wrist_roll_rubber_hand"/>
+                  <!-- Right rubber hand REMOVED (matches training g1_23dof_tt.urdf: empty wrist link);
+                       the table-tennis paddle adapter replaces it. Body mass/inertia come from the
+                       adapter geoms (mount 0.03 + rod 0.08 + holder 0.05 + blade 0.17 kg). -->
                   <!-- Table-tennis paddle chain, matching training URDF g1_23dof_tt_paddle.urdf:
                        wrist -> adapter mount -> extension rod (0.16m) -> holder (+90deg about X)
                        -> paddle blade. Contact disk lands at wrist +X 0.337 (= training paddle_offset). -->
