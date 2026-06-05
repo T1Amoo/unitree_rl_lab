@@ -8,13 +8,10 @@ import numpy as np
 # env-local ball default (table frame); matches BALL_CFG init_state.pos
 SERVE_DEFAULT_POS = (1.35, 0.0, 1.03)
 SERVE_POS_Y_RANGE = (-0.1, 0.1)      # ball.ball_pos_y_range
-# NOTE: training/eval used ball_speed_x = (-6.5,-5.0) m/s. That full speed is
-# uncatchable in mujoco (perception latency + dynamics gap vs IsaacLab), so the
-# serve is SLOWED here for the sim2sim demo to give the robot time to react.
-# (This is a sim-only accommodation; raise back toward (-6.5,-5.0) for fidelity.)
-SERVE_VEL_X = (-4.0, -3.4)           # slowed from training (-6.5,-5.0)
-SERVE_VEL_Y = (-0.5, 0.3)            # training (-0.8,0.4), slightly narrowed
-SERVE_VEL_Z = (2.4, 2.7)             # higher arc so the slow ball CLEARS THE NET (verified: z@net>1.1, lands robot-side x~-0.5..-1.0)
+# TRAINING serve params (base tt_env_config) — restored for in-distribution comparison.
+SERVE_VEL_X = (-6.5, -5.0)           # ball.ball_speed_x_range
+SERVE_VEL_Y = (-0.8, 0.4)            # ball.ball_speed_y_range
+SERVE_VEL_Z = (1.5, 2.0)             # ball.ball_speed_z_range
 
 
 class Serve:
