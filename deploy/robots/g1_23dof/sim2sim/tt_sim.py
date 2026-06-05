@@ -240,8 +240,14 @@ def run(headless_steps=None):
     print("[tt_sim] keys (type in THIS terminal): "
           "f=FixStand  g=TableTennis  p=Passive | band: 8=lower 7=raise 9=release | q=quit")
     _bvel = np.zeros(6)
+    # Canonical sim pacing (unitree_mujoco / GR00T): one mj_step per loop paced to
+    # sim_dt in REAL TIME; sync the viewer only every DECIMATION steps (~50 fps).
+    # Syncing every physics step (the old code) throttled physics to ~50-100 Hz
+    # while the bridge publishes LowState at 500 Hz and the deploy runs PD at
+    # 1000 Hz -> rate mismatch -> control jitter.
     with mujoco.viewer.launch_passive(model, data) as viewer:
         while viewer.is_running() and not keyfsm.quit:
+            step_start = time.monotonic()
             if band.enable:
                 mujoco.mj_objectVelocity(model, data, mujoco.mjtObj.mjOBJ_BODY,
                                          band_link, _bvel, 0)  # world frame: [ang(3), lin(3)]
@@ -264,8 +270,10 @@ def run(headless_steps=None):
             phys_count += 1
             if phys_count % DECIMATION == 0:
                 control_tick()
-            viewer.sync()
-            time.sleep(PHYS_DT)
+                viewer.sync()  # ~50 fps render, decoupled from the 500 Hz physics
+            elapsed = time.monotonic() - step_start
+            if (sleep_t := PHYS_DT - elapsed) > 0:
+                time.sleep(sleep_t)
 
     pub.destroy_node()
     rclpy.shutdown()
