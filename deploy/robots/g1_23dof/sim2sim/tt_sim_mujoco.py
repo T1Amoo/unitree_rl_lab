@@ -133,7 +133,7 @@ def SimulationThread():
     ctrl_step = 0
     cnt = 0
     ball_age = 0           # control ticks since last serve; reserve on land or timeout
-    MAX_BALL_AGE = 250     # 5 s safety timeout (training also has a ball-episode timeout)
+    MAX_BALL_AGE = 150     # 3 s safety timeout (also reset on land/settle)
     last_reset = -100000
     RESET_COOLDOWN = 750   # >=1.5 s between auto-resets so recovery (p/f) isn't fought
     print("[tt_sim] focus the MuJoCo window, then: f=FixStand g=TableTennis p=Passive | 8=lower 7=raise 9=release | q=quit", flush=True)
@@ -174,12 +174,14 @@ def SimulationThread():
         if cnt % DECIMATION == 0:
             ctrl_step += 1
             ball_age += 1
-            # Re-serve the moment the ball lands (z<0.1) or times out — EXACTLY like
-            # training (tt_env reset_ball on ball_on_floor|timeout). Otherwise the ball
-            # lingers on the floor and the policy chases an out-of-distribution grounded
-            # ball (predictor extrapolates garbage) -> falls. This is the key fix.
+            # Re-serve when the ball is done: landed (z<0.1), SETTLED anywhere
+            # (|vel|<0.3 — e.g. resting on a leg / on the table), or timed out.
+            # Mirrors training (reset_ball on floor/timeout) and also handles the
+            # ball coming to rest on the robot's body (which never hits the floor).
+            ball_speed = float(np.linalg.norm(mj_data.qvel[ball_vadr:ball_vadr + 3]))
             ball_on_floor = mj_data.xpos[ball_bid][2] < 0.1
-            if ball_age > 5 and (ball_on_floor or ball_age > MAX_BALL_AGE):
+            ball_settled = ball_speed < 0.3
+            if ball_age > 10 and (ball_on_floor or ball_settled or ball_age > MAX_BALL_AGE):
                 pos, vel = serve.sample()
                 mj_data.qpos[ball_qadr:ball_qadr + 3] = pos
                 mj_data.qpos[ball_qadr + 3:ball_qadr + 7] = [1, 0, 0, 0]
