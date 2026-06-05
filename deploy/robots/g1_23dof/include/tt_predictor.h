@@ -23,6 +23,10 @@ public:
         for (const auto& p : buf_) x.insert(x.end(), p.begin(), p.end());
         return runner_.act({{"ball_history", x}});
     }
+
+    // Clear the history (call when the ball becomes invalid/untrackable so the
+    // next valid ball starts from a clean buffer instead of extrapolating a jump).
+    void clear() { buf_.clear(); }
 private:
     isaaclab::OrtRunner runner_;
     std::deque<std::vector<float>> buf_;

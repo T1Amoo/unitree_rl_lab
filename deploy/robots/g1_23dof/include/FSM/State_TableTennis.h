@@ -59,16 +59,37 @@ public:
 
             env->reset();
             long t = 0;
+            Eigen::Vector3f prev_ball = Eigen::Vector3f::Zero();
+            bool have_prev = false;
             while (policy_thread_running) {
                 env->robot->update();                              // proprio from DDS
                 auto p = ball_src_->get(t);                        // latest mocap
-                env->tt_ball_pos  = Eigen::Vector3f(p.ball_pos[0], p.ball_pos[1], p.ball_pos[2]);
-                env->tt_robot_pos = Eigen::Vector3f(p.robot_pos[0], p.robot_pos[1], p.robot_pos[2]);
+                Eigen::Vector3f ball(p.ball_pos[0], p.ball_pos[1], p.ball_pos[2]);
+                Eigen::Vector3f rpos(p.robot_pos[0], p.robot_pos[1], p.robot_pos[2]);
+                env->tt_ball_pos  = ball;
+                env->tt_robot_pos = rpos;
+                // ball velocity from consecutive deploy reads (for the invalid gate)
+                float vx = 0.f, vz = 0.f;
+                if (have_prev) { vx = (ball[0]-prev_ball[0])/env->step_dt; vz = (ball[2]-prev_ball[2])/env->step_dt; }
+                prev_ball = ball; have_prev = true;
+                // mask_invalid (matches training tt_env.py:1044): ball is NOT a live
+                // incoming serve -> do not chase. Real-robot-safe: otherwise the robot
+                // lunges at a landed / returning / out-of-range ball and topples.
+                bool invalid = (ball[0] < -1.9f) || (vx > 0.3f) || (ball[2] < 0.7f)
+                               || (ball[0] < -1.35f && vz < 0.f);
                 auto obs = env->observation_manager->compute();    // uses prev-step prediction
                 auto action = env->alg->act(obs);
                 env->action_manager->process_action(action);       // also feeds last_action
-                auto pred = predictor_->update({p.ball_pos[0], p.ball_pos[1], p.ball_pos[2]});
-                env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);
+                if (invalid) {
+                    // hold point relative to robot (training modified_ball_pos:
+                    // robot_y + paddle_y_offset(-0.55), z = body_height(0.685)+0.2)
+                    // -> rel_target ~ ready stance, robot holds instead of chasing.
+                    env->tt_ball_prediction = Eigen::Vector3f(rpos[0], rpos[1] - 0.55f, 0.885f);
+                    predictor_->clear();
+                } else {
+                    auto pred = predictor_->update({ball[0], ball[1], ball[2]});
+                    env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);
+                }
 
                 std::this_thread::sleep_until(sleepTill);
                 sleepTill += dt;
