@@ -1,6 +1,6 @@
 <mujoco model="g1_23dof_tt_scene">
   <compiler angle="radian" meshdir="meshes"/>
-  <option timestep="0.002" iterations="50" solver="Newton" gravity="0 0 -9.81"/>
+  <option timestep="0.002" iterations="50" solver="Newton" gravity="0 0 -9.81" integrator="implicitfast"/>
   <statistic center="0 0 0.5" extent="2.5"/>
   <asset>
     <mesh name="pelvis" file="pelvis.STL"/>

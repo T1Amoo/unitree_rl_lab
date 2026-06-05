@@ -230,6 +230,11 @@ def run(headless_steps=None):
     band_link = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso_link")
     band = _Band(point=[float(data.xpos[band_link][0]), float(data.xpos[band_link][1]), 1.5])
 
+    # Initial robot+ball state, for auto-reset on fall (GR00T-style check_fall).
+    init_qpos = data.qpos.copy()
+    pelvis_jadr = model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "floating_base_joint")]
+    FALL_Z = 0.4  # pelvis z below this -> fallen -> reset + re-catch with band
+
     keyfsm = _KeyFSM(band=band)
     keyfsm.start()
     print("[tt_sim] keys (type in THIS terminal): "
@@ -245,6 +250,16 @@ def run(headless_steps=None):
             else:
                 data.xfrc_applied[band_link] = 0.0
             mujoco.mj_step(model, data)
+            # auto-reset on fall: restore robot+ball to start, zero velocity, re-catch
+            # with the band so the robot never stays collapsed on the ground.
+            if data.qpos[pelvis_jadr + 2] < FALL_Z:
+                print(f"[tt_sim] FALL detected (pelvis z={data.qpos[pelvis_jadr+2]:.2f}) -> reset + re-catch")
+                data.qpos[:] = init_qpos
+                data.qvel[:] = 0.0
+                data.xfrc_applied[:] = 0.0
+                mujoco.mj_forward(model, data)
+                band.point[2] = 1.5
+                band.enable = True
             keyfsm.apply(bridge.low_state)
             phys_count += 1
             if phys_count % DECIMATION == 0:
