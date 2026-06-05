@@ -1,0 +1,23 @@
+deploy/robots/g1_23dof/sim2sim/scene/g1_23dof_tt_scene.xml
+  s_2d92d93564222b::t_79ae93a40e1a4f 199
+  s_2d92d93564222b::t_768aa21b1638f3 250-251
+deploy/robots/g1_23dof/sim2sim/tt_sim_mujoco.py
+  s_2d92d93564222b::t_d753616c9ac392 177-181,183-184
+  s_2d92d93564222b::t_f3043c773a53eb 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "cbad4424cd4842ea71a7ca692983c76f97203908",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
