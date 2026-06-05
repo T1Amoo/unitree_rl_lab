@@ -90,13 +90,15 @@ class _KeyFSM:
     }
 
     def __init__(self, hold_steps=60, band=None):
-        self.b2 = 0
-        self.b3 = 0
-        self.ttl = 0
-        self.hold = hold_steps
-        self.quit = False
+        self.b2 = 0          # modifier byte (LT/RB) — held first
+        self.b3 = 0          # edge byte (up/Y/B) — added after modifier is established
+        self.seq = -1        # -1 = idle; >=0 = frames since keypress
         self.band = band
+        self.quit = False
         self._lock = threading.Lock()
+        # Phase lengths (in apply() calls): modifier-only, then modifier+edge, then release.
+        self.PRE = 12
+        self.BOTH = 30
 
     def start(self):
         threading.Thread(target=self._reader, daemon=True).start()
@@ -118,7 +120,7 @@ class _KeyFSM:
                     elif c in self.CHORDS:
                         with self._lock:
                             self.b2, self.b3 = self.CHORDS[c]
-                            self.ttl = self.hold
+                            self.seq = 0
                         print(f"[tt_sim] key '{c}' -> chord ({self.b2:#04x},{self.b3:#04x})")
                     elif self.band is not None and c in ("7", "8", "9"):
                         if c == "8":
@@ -134,16 +136,27 @@ class _KeyFSM:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
     def apply(self, low_state):
-        # Called every physics step. Holds the chord for `hold` steps then releases
-        # (0,0) so the deploy's `.on_pressed` edge fires exactly once per keypress.
+        # Two-phase chord so the deploy's "(modifier held) AND (edge .on_pressed)"
+        # fires: set the modifier byte alone first (PRE frames) so it is established
+        # across several published LowStates, THEN add the edge byte (BOTH frames),
+        # then release. Avoids the non-atomic-write race where the edge button's
+        # rising edge lands on a message before the modifier byte is set.
         with self._lock:
-            if self.ttl > 0:
+            if self.seq < 0:
+                low_state.wireless_remote[2] = 0
+                low_state.wireless_remote[3] = 0
+            elif self.seq < self.PRE:
+                low_state.wireless_remote[2] = self.b2
+                low_state.wireless_remote[3] = 0
+                self.seq += 1
+            elif self.seq < self.PRE + self.BOTH:
                 low_state.wireless_remote[2] = self.b2
                 low_state.wireless_remote[3] = self.b3
-                self.ttl -= 1
+                self.seq += 1
             else:
                 low_state.wireless_remote[2] = 0
                 low_state.wireless_remote[3] = 0
+                self.seq = -1
 
 
 def run(headless_steps=None):

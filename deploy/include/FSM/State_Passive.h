@@ -46,6 +46,13 @@ public:
         {
             lowcmd->msg_.motor_cmd()[i].q() = lowstate->msg_.motor_state()[i].q();
         }
+        // TEMP DEBUG: dump joystick when any tracked button is pressed
+        auto & j = lowstate->joystick;
+        static int dbg = 0;
+        if((j.LT.pressed || j.up.pressed || j.RB.pressed || j.Y.pressed) && (dbg++ % 50 == 0))
+            spdlog::info("JOY LT={} up={}(op={}) RB={} Y={}(op={}) timeout={}",
+                         j.LT.pressed, j.up.pressed, j.up.on_pressed,
+                         j.RB.pressed, j.Y.pressed, j.Y.on_pressed, lowstate->isJoystickTimeout());
     }
 };
 
