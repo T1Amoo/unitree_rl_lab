@@ -1,0 +1,19 @@
+deploy/robots/g1_23dof/sim2sim/tt_sim_mujoco.py
+  s_2d92d93564222b::t_676a7570153c73 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6f78b75e50475ce6ed841b35f92ec45aa936940a",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
