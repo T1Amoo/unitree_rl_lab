@@ -132,6 +132,8 @@ def SimulationThread():
     serve = Serve(interval_steps=150)
     ctrl_step = 0
     cnt = 0
+    ball_age = 0           # control ticks since last serve; reserve on land or timeout
+    MAX_BALL_AGE = 250     # 5 s safety timeout (training also has a ball-episode timeout)
     last_reset = -100000
     RESET_COOLDOWN = 750   # >=1.5 s between auto-resets so recovery (p/f) isn't fought
     print("[tt_sim] focus the MuJoCo window, then: f=FixStand g=TableTennis p=Passive | 8=lower 7=raise 9=release | q=quit", flush=True)
@@ -171,12 +173,19 @@ def SimulationThread():
         # serve at the control rate (50 Hz)
         if cnt % DECIMATION == 0:
             ctrl_step += 1
-            if serve.due(ctrl_step):
+            ball_age += 1
+            # Re-serve the moment the ball lands (z<0.1) or times out — EXACTLY like
+            # training (tt_env reset_ball on ball_on_floor|timeout). Otherwise the ball
+            # lingers on the floor and the policy chases an out-of-distribution grounded
+            # ball (predictor extrapolates garbage) -> falls. This is the key fix.
+            ball_on_floor = mj_data.xpos[ball_bid][2] < 0.1
+            if ball_age > 5 and (ball_on_floor or ball_age > MAX_BALL_AGE):
                 pos, vel = serve.sample()
                 mj_data.qpos[ball_qadr:ball_qadr + 3] = pos
                 mj_data.qpos[ball_qadr + 3:ball_qadr + 7] = [1, 0, 0, 0]
                 mj_data.qvel[ball_vadr:ball_vadr + 3] = vel
                 mj_data.qvel[ball_vadr + 3:ball_vadr + 6] = 0.0
+                ball_age = 0
         # publish mocap FASTER than control (every PUB_DECIM steps) so the deploy
         # always reads a fresh ball pose -> low perception latency (training delay
         # was ~4-10 ms). The deploy's predictor still consumes at its own 50 Hz.
