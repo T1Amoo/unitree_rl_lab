@@ -34,7 +34,8 @@ from ros_publish import MocapPublisher  # noqa: E402
 glfw = mujoco.glfw.glfw
 
 PHYS_DT = 0.002        # physics step (matches our TT scene tuning)
-DECIMATION = 10        # 50 Hz control / serve / mocap publish
+DECIMATION = 10        # 50 Hz control / serve
+PUB_DECIM = 2          # 250 Hz mocap publish (fresher ball pose -> lower perception latency)
 FALL_Z = 0.4           # pelvis z below this -> fallen -> auto-reset
 BAND_Z0 = 1.5          # band anchor height: hangs feet ~0.6 m off the ground
 
@@ -161,6 +162,7 @@ def SimulationThread():
             S["band_enable"] = True
 
         cnt += 1
+        # serve at the control rate (50 Hz)
         if cnt % DECIMATION == 0:
             ctrl_step += 1
             if serve.due(ctrl_step):
@@ -169,6 +171,10 @@ def SimulationThread():
                 mj_data.qpos[ball_qadr + 3:ball_qadr + 7] = [1, 0, 0, 0]
                 mj_data.qvel[ball_vadr:ball_vadr + 3] = vel
                 mj_data.qvel[ball_vadr + 3:ball_vadr + 6] = 0.0
+        # publish mocap FASTER than control (every PUB_DECIM steps) so the deploy
+        # always reads a fresh ball pose -> low perception latency (training delay
+        # was ~4-10 ms). The deploy's predictor still consumes at its own 50 Hz.
+        if cnt % PUB_DECIM == 0:
             pub.publish(mj_data.xpos[ball_bid].copy(),
                         mj_data.xpos[pelvis_bid].copy(),
                         mj_data.xquat[pelvis_bid].copy())
