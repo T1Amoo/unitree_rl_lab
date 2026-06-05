@@ -1,0 +1,21 @@
+deploy/robots/g1_23dof/config/config.yaml
+  s_2d92d93564222b::t_9ff2a4cfbabe9a 27-31
+deploy/include/FSM/State_Passive.h
+  s_2d92d93564222b::t_27f0c6a247380e 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "c264fb7d65cc86dbb4dc50b521df3748ca5de51b",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
