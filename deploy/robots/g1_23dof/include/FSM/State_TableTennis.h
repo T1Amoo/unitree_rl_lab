@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <memory>
+#include <fstream>
 #include <rclcpp/rclcpp.hpp>
 #include "FSM/FSMState.h"
 #include "isaaclab/envs/manager_based_rl_env.h"
@@ -50,6 +51,13 @@ public:
         }
         env->robot->update();
 
+        traj_log_.open("/tmp/arm_mujoco.csv", std::ios::out | std::ios::trunc);
+        if (traj_log_.is_open()) {
+            traj_log_ << "t";
+            for (int i = 0; i < 23; ++i) traj_log_ << ",cmd" << i;
+            for (int i = 0; i < 23; ++i) traj_log_ << ",act" << i;
+            traj_log_ << "\n";
+        }
         policy_thread_running = true;
         policy_thread = std::thread([this] {
             using clock = std::chrono::high_resolution_clock;
@@ -94,6 +102,17 @@ public:
                 std::this_thread::sleep_until(sleepTill);
                 sleepTill += dt;
                 ++t;
+                // DIAG: log commanded (q_des) vs actual joint angles for trajectory
+                // comparison with the IsaacLab eval. cmd = processed_actions (scale*a+offset).
+                if (traj_log_.is_open()) {
+                    auto qdes = env->action_manager->processed_actions();
+                    auto & q = env->robot->data.joint_pos;
+                    traj_log_ << t;
+                    for (size_t i = 0; i < qdes.size(); ++i) traj_log_ << "," << qdes[i];
+                    for (int i = 0; i < (int)q.size(); ++i) traj_log_ << "," << q[i];
+                    traj_log_ << "\n";
+                    if (t % 50 == 0) traj_log_.flush();
+                }
             }
         });
     }
@@ -117,6 +136,7 @@ private:
     std::unique_ptr<TTPredictor> predictor_;
     std::unique_ptr<RosBallSource> ball_src_;
     rclcpp::Node::SharedPtr ros_node_;
+    std::ofstream traj_log_;   // DIAG: per-step commanded vs actual joint angles
     std::thread policy_thread;
     bool policy_thread_running = false;
 };
