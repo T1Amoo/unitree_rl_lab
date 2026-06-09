@@ -14,6 +14,7 @@
 #include "tt_observations.h"
 #include "tt_ros_ball_source.h"
 #include "tt_predictor.h"
+#include "perception_tracker.h"
 
 class State_TableTennis : public FSMState
 {
@@ -67,36 +68,30 @@ public:
 
             env->reset();
             long t = 0;
-            Eigen::Vector3f prev_ball = Eigen::Vector3f::Zero();
-            bool have_prev = false;
             while (policy_thread_running) {
                 env->robot->update();                              // proprio from DDS
                 auto p = ball_src_->get(t);                        // latest mocap
                 Eigen::Vector3f ball(p.ball_pos[0], p.ball_pos[1], p.ball_pos[2]);
                 Eigen::Vector3f rpos(p.robot_pos[0], p.robot_pos[1], p.robot_pos[2]);
-                env->tt_ball_pos  = ball;
-                env->tt_robot_pos = rpos;
-                // ball velocity from consecutive deploy reads (for the invalid gate)
-                float vx = 0.f, vz = 0.f;
-                if (have_prev) { vx = (ball[0]-prev_ball[0])/env->step_dt; vz = (ball[2]-prev_ball[2])/env->step_dt; }
-                prev_ball = ball; have_prev = true;
-                // mask_invalid (matches training tt_env.py:1044): ball is NOT a live
-                // incoming serve -> do not chase. Real-robot-safe: otherwise the robot
-                // lunges at a landed / returning / out-of-range ball and topples.
-                bool invalid = (ball[0] < -1.9f) || (vx > 0.3f) || (ball[2] < 0.7f)
-                               || (ball[0] < -1.35f && vz < 0.f);
-                auto obs = env->observation_manager->compute();    // uses prev-step prediction
+                // robust tracker: single ball candidate from mocap; base from mocap; no
+                // leg-odometry yet (Zero() -> hold-last on base dropout).
+                bool have_ball = std::isfinite(ball[0]) && (ball.norm() > 1e-6f);
+                std::vector<Eigen::Vector3f> cands;
+                if (have_ball) cands.push_back(ball);
+                tracker_.update(cands, rpos, true, Eigen::Vector3f::Zero());
+                PTOutput s = tracker_.output();
+
+                env->tt_ball_pos  = s.ball;
+                env->tt_robot_pos = s.base;
+                auto obs = env->observation_manager->compute();
                 auto action = env->alg->act(obs);
-                env->action_manager->process_action(action);       // also feeds last_action
-                if (invalid) {
-                    // hold point relative to robot (training modified_ball_pos:
-                    // robot_y + paddle_y_offset(-0.55), z = body_height(0.685)+0.2)
-                    // -> rel_target ~ ready stance, robot holds instead of chasing.
-                    env->tt_ball_prediction = Eigen::Vector3f(rpos[0], rpos[1] - 0.55f, 0.885f);
-                    predictor_->clear();
-                } else {
-                    auto pred = predictor_->update({ball[0], ball[1], ball[2]});
+                env->action_manager->process_action(action);
+                if (s.engaged) {
+                    auto pred = predictor_->update({s.ball[0], s.ball[1], s.ball[2]});
                     env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);
+                } else {
+                    predictor_->clear();
+                    env->tt_ball_prediction = s.prediction_hold;
                 }
 
                 std::this_thread::sleep_until(sleepTill);
@@ -136,6 +131,7 @@ private:
     std::unique_ptr<TTPredictor> predictor_;
     std::unique_ptr<RosBallSource> ball_src_;
     rclcpp::Node::SharedPtr ros_node_;
+    PerceptionTracker tracker_;
     std::ofstream traj_log_;   // DIAG: per-step commanded vs actual joint angles
     std::thread policy_thread;
     bool policy_thread_running = false;
