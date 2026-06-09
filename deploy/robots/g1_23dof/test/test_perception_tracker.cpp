@@ -147,6 +147,44 @@ void run_base_track(){
     printf("  run_base_track OK\n");
 }
 
+void run_hold_when_disengaged(){
+    PerceptionTracker t;
+    // Not engaged (fresh tracker, no confirmed ball): out_.ball must equal the held
+    // ready point (prediction_hold), NOT a stale/zero KF value.
+    t.update({}, BASE, true, Vec3::Zero());
+    PTOutput o = t.output();
+    assert(o.engaged == false);
+    assert((o.ball - o.prediction_hold).norm() < 1e-4f);   // ball held at ready point
+    printf("  run_hold_when_disengaged OK\n");
+}
+
+void run_prompt_disengage_on_loss(){
+    PerceptionTracker t;
+    Vec3 p(1.0f,0.f,1.0f), v(-4.0f,0.f,1.7f);
+    for(int i=0;i<6;i++){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f; t.update(one(p),BASE,true,Vec3::Zero()); }
+    assert(t.output().engaged == true);
+    // total dropout: once the KF track is declared lost (kf_init_ false after max_coast),
+    // engaged must drop immediately, not wait an extra coast_frames window.
+    int frames_to_disengage = 0;
+    for(int i=0;i<40;i++){ t.update({},BASE,true,Vec3::Zero()); frames_to_disengage++; if(!t.output().engaged) break; }
+    assert(frames_to_disengage <= 10);   // ~max_coast(8)+1, NOT ~15
+    printf("  run_prompt_disengage_on_loss OK\n");
+}
+
+void run_engage_ramp(){
+    PerceptionTracker t;   // ramp_frames=4
+    Vec3 p(1.0f,0.f,1.0f), v(-4.0f,0.f,1.7f);
+    auto step=[&](){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f; };
+    // drive to engaged
+    for(int i=0;i<6;i++){ step(); t.update(one(p),BASE,true,Vec3::Zero()); }
+    assert(t.output().engaged == true);
+    float r0 = t.engage_ramp();
+    assert(r0 < 1.0f);                 // still ramping right after engage
+    for(int i=0;i<5;i++){ step(); t.update(one(p),BASE,true,Vec3::Zero()); }
+    assert(t.engage_ramp() >= 0.999f); // fully ramped after >= ramp_frames
+    printf("  run_engage_ramp OK\n");
+}
+
 int main(){
     run_volume_gate();
     run_kf_smooth_and_coast();
@@ -156,6 +194,9 @@ int main(){
     run_volley_reject();
     run_hysteresis();
     run_base_track();
+    run_hold_when_disengaged();
+    run_prompt_disengage_on_loss();
+    run_engage_ramp();
     printf("ALL TESTS PASSED\n");
     return 0;
 }

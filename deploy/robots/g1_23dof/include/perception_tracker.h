@@ -26,6 +26,16 @@ struct PTConfig {
     // ready hold point relative to base (matches deploy: y-offset, height)
     float ready_dy = -0.55f, ready_dz_world = 0.885f;
     int   ramp_frames = 4;
+    // KF correction gains
+    float kf_alpha = 0.5f;        // KF position gain (kf_correct 'a')
+    float kf_beta  = 0.3f;        // KF velocity gain (kf_correct 'b' = kf_beta/dt)
+    // base tracking
+    float base_lp = 0.4f;         // base low-pass gain
+    float base_jump = 0.30f;      // base jump-reject threshold (m)
+    // bounce detection
+    float bounce_vz_up = 0.05f;   // ascending threshold for bounce (zero-crossing)
+    float bounce_vz_down = 0.30f; // |descending| threshold for bounce
+    float bounce_near_table = 0.15f; // extra height above roll_z counted as near-table
 };
 
 struct PTOutput {
@@ -51,6 +61,11 @@ public:
     Eigen::Vector3f ball_estimate() const { return kf_p_; }
     Eigen::Vector3f ball_velocity() const { return kf_v_; }
     void set_paddle_hit(bool hit) { has_paddle_ = hit; }
+    float engage_ramp() const {
+        if (cfg_.ramp_frames <= 0) return 1.0f;
+        float r = float(engaged_run_) / float(cfg_.ramp_frames);
+        return r < 1.0f ? r : 1.0f;
+    }
 
 private:
     float predicted_first_bounce_x() const {
@@ -77,7 +92,7 @@ private:
         kf_v_.z() += (-cfg_.g) * cfg_.dt;
     }
     void kf_correct(const Eigen::Vector3f& z) {        // simple alpha-beta correction
-        const float a = 0.5f, b = 0.3f / cfg_.dt;      // position/velocity blend gains
+        const float a = cfg_.kf_alpha, b = cfg_.kf_beta / cfg_.dt;  // position/velocity blend gains
         Eigen::Vector3f resid = z - kf_p_;
         kf_p_ += a * resid;
         kf_v_ += b * resid;
@@ -101,6 +116,7 @@ private:
     bool base_init_ = false;
     Eigen::Vector3f base_p_ = Eigen::Vector3f::Zero();
     int  base_miss_ = 0;
+    int  engaged_run_ = 0;        // consecutive engaged frames (for engage_ramp)
 
     bool compute_live() {
         if (!kf_init_) { dead_count_ = 0; return false; }
@@ -132,7 +148,7 @@ inline void PerceptionTracker::update(
         if (!base_init_) { base_p_ = base_candidate; base_init_ = true; }
         else {
             float jump = (base_candidate - base_p_).norm();
-            if (jump < 0.30f) base_p_ += 0.4f * (base_candidate - base_p_);  // low-pass
+            if (jump < cfg_.base_jump) base_p_ += cfg_.base_lp * (base_candidate - base_p_);  // low-pass
             // else: reject as a jump/reflection, keep base_p_ (no update this frame)
         }
         base_miss_ = 0;
@@ -174,9 +190,9 @@ inline void PerceptionTracker::update(
 
     // bounce detection in own half: vz crosses from descending to ascending near table.
     if (kf_init_) {
-        bool ascending_now = kf_v_.z() > 0.05f;   // zero-crossing: no longer descending (was: 0.3, too strict vs KF lag)
-        bool was_descending = prev_vz_ < -0.3f;
-        bool near_table = kf_p_.z() < cfg_.roll_z + 0.15f;   // within ~0.15 m of table
+        bool ascending_now = kf_v_.z() > cfg_.bounce_vz_up;   // zero-crossing: no longer descending (was: 0.3, too strict vs KF lag)
+        bool was_descending = prev_vz_ < -cfg_.bounce_vz_down;
+        bool near_table = kf_p_.z() < cfg_.roll_z + cfg_.bounce_near_table;   // within ~0.15 m of table
         bool own_half = kf_p_.x() < cfg_.own_x_hi;
         if (ascending_now && was_descending && near_table && own_half) own_bounce_count_++;
         if (kf_p_.x() > cfg_.own_x_hi) own_bounce_count_ = 0;   // reset in opponent half
@@ -187,7 +203,9 @@ inline void PerceptionTracker::update(
     out_.live = compute_live();
     if (out_.live) { live_run_++; dead_run_ = 0; } else { dead_run_++; live_run_ = 0; }
     if (!tracking_ && live_run_ >= cfg_.confirm_frames) tracking_ = true;
-    if ( tracking_ && dead_run_ >= cfg_.coast_frames)   tracking_ = false;
+    if ( tracking_ && (dead_run_ >= cfg_.coast_frames || !kf_init_))   tracking_ = false;
     out_.engaged = tracking_ && base_valid_;     // base_valid_ default true; Task 8 drives it
     out_.prediction_hold = Eigen::Vector3f(out_.base.x(), out_.base.y() + cfg_.ready_dy, cfg_.ready_dz_world);
+    if (!out_.engaged) out_.ball = out_.prediction_hold;   // hold a stable ready ball when not engaged
+    if (out_.engaged) engaged_run_++; else engaged_run_ = 0;
 }
