@@ -50,6 +50,7 @@ public:
     PTOutput output() const { return out_; }
     Eigen::Vector3f ball_estimate() const { return kf_p_; }
     Eigen::Vector3f ball_velocity() const { return kf_v_; }
+    void set_paddle_hit(bool hit) { has_paddle_ = hit; }
 
 private:
     bool in_volume(const Eigen::Vector3f& p) const {
@@ -78,6 +79,9 @@ private:
     Eigen::Vector3f kf_v_ = Eigen::Vector3f::Zero();   // velocity estimate
     int miss_ = 0;                                     // consecutive frames with no matched candidate
     int dead_count_ = 0;   // consecutive frames the ball looks dead (rolling/resting)
+    int  own_bounce_count_ = 0;
+    float prev_vz_ = 0.f;
+    bool has_paddle_ = false;     // set by host via set_paddle_hit()
 
     bool compute_live() {
         if (!kf_init_) { dead_count_ = 0; return false; }
@@ -89,6 +93,7 @@ private:
         bool resting  = (v.norm() < cfg_.v_rest);
         if (on_table || resting) { if (++dead_count_ >= cfg_.dead_frames) return false; }
         else dead_count_ = 0;
+        if (own_bounce_count_ >= 2 && !has_paddle_) return false;   // double bounce, missed
         return true;
     }
 };
@@ -121,12 +126,23 @@ inline void PerceptionTracker::update(
 
     // 3) correct or coast
     if (matched) {
-        if (!kf_init_) { kf_p_ = *matched; kf_v_.setZero(); kf_init_ = true; }
+        if (!kf_init_) { kf_p_ = *matched; kf_v_.setZero(); kf_init_ = true; own_bounce_count_ = 0; prev_vz_ = 0.f; }
         else kf_correct(*matched);
         miss_ = 0;
     } else {
         miss_++;
         if (miss_ > cfg_.max_coast) kf_init_ = false;   // lost track
+    }
+
+    // bounce detection in own half: vz crosses from descending to ascending near table.
+    if (kf_init_) {
+        bool ascending_now = kf_v_.z() > 0.05f;   // zero-crossing: no longer descending (was: 0.3, too strict vs KF lag)
+        bool was_descending = prev_vz_ < -0.3f;
+        bool near_table = kf_p_.z() < cfg_.roll_z + 0.15f;   // within ~0.15 m of table
+        bool own_half = kf_p_.x() < cfg_.own_x_hi;
+        if (ascending_now && was_descending && near_table && own_half) own_bounce_count_++;
+        if (kf_p_.x() > cfg_.own_x_hi) own_bounce_count_ = 0;   // reset in opponent half
+        prev_vz_ = kf_v_.z();
     }
 
     out_.ball = kf_p_;

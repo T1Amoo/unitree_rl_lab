@@ -77,11 +77,28 @@ void run_dead_ball(){
     printf("  run_dead_ball OK\n");
 }
 
+void run_double_bounce(){
+    PerceptionTracker t;
+    // Simulate two bounces in the own half (x<0) without a paddle hit.
+    // Bounce = vz goes negative (down) then positive (up) near table height.
+    auto frame=[&](Vec3 p){ t.update(one(p),BASE,true,Vec3::Zero()); };
+    // descend to 1st bounce
+    frame(Vec3(-0.6f,0.f,1.0f)); frame(Vec3(-0.62f,0.f,0.85f)); frame(Vec3(-0.64f,0.f,0.78f));
+    frame(Vec3(-0.66f,0.f,0.85f)); frame(Vec3(-0.68f,0.f,0.95f));   // up (bounce 1)
+    frame(Vec3(-0.70f,0.f,0.85f)); frame(Vec3(-0.72f,0.f,0.78f));   // down again
+    frame(Vec3(-0.74f,0.f,0.85f));                                  // up (bounce 2)
+    // after the 2nd own-half bounce with no paddle hit, ball is dead
+    for(int i=0;i<6;i++) frame(Vec3(-0.76f,0.f,0.9f));
+    assert(t.output().live == false);
+    printf("  run_double_bounce OK\n");
+}
+
 int main(){
     run_volume_gate();
     run_kf_smooth_and_coast();
     run_reflection_rejection();
     run_dead_ball();
+    run_double_bounce();
     printf("ALL TESTS PASSED\n");
     return 0;
 }
