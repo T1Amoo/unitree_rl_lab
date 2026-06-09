@@ -36,9 +36,25 @@ void run_kf_smooth_and_coast(){
     printf("  run_kf_smooth_and_coast OK\n");
 }
 
+void run_reflection_rejection(){
+    PerceptionTracker t;
+    Vec3 p(1.0f,0.f,1.0f), v(-3.0f,0.f,0.f);
+    for(int i=0;i<6;i++){ p+=v*0.02f; t.update(one(p), BASE, true, Vec3::Zero()); }
+    // Now feed TWO candidates: the true continuation + a far reflection blip.
+    p += v*0.02f;
+    Vec3 reflection(0.5f, 0.8f, 1.5f);   // in-volume but far from predicted track
+    std::vector<Vec3> cands = { reflection, p };
+    t.update(cands, BASE, true, Vec3::Zero());
+    // tracker must follow the true ball (near p), not jump to the reflection
+    assert((t.ball_estimate() - p).norm() < 0.2f);
+    assert((t.ball_estimate() - reflection).norm() > 0.5f);
+    printf("  run_reflection_rejection OK\n");
+}
+
 int main(){
     run_volume_gate();
     run_kf_smooth_and_coast();
+    run_reflection_rejection();
     printf("ALL TESTS PASSED\n");
     return 0;
 }

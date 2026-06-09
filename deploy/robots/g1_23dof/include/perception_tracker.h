@@ -89,9 +89,20 @@ inline void PerceptionTracker::update(
     // 1) predict
     if (kf_init_) kf_predict();
 
-    // 2) pick a matched candidate (Task 3 adds continuity; here: first in-volume)
+    // 2) match: when a track exists, pick the in-volume candidate closest to the
+    //    predicted position within the gate radius (rejects far reflections). When no
+    //    track, pick the first in-volume candidate to seed.
     const Eigen::Vector3f* matched = nullptr;
-    for (const auto& c : ball_candidates) { if (in_volume(c)) { matched = &c; break; } }
+    float best = 1e9f;
+    for (const auto& c : ball_candidates) {
+        if (!in_volume(c)) continue;
+        if (kf_init_) {
+            float d = (c - kf_p_).norm();
+            if (d <= cfg_.gate_radius && d < best) { best = d; matched = &c; }
+        } else {
+            matched = &c; break;   // no track yet: seed with first in-volume candidate
+        }
+    }
 
     // 3) correct or coast
     if (matched) {
