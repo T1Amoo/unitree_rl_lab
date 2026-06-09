@@ -5,7 +5,13 @@
 #include <sstream>
 #include <algorithm>
 
-struct TTPerception { float ball_pos[3]; float robot_pos[3]; float heading; };
+struct TTPerception {
+    float ball_pos[3] = {};
+    float robot_pos[3] = {};
+    float heading = 0.0f;
+    bool ball_valid = true;   // false if mocap ball topic is stale / never received
+    bool base_valid = true;   // false if mocap base topic is stale / never received
+};
 
 // Abstract source of ball + robot-base perception, per control step.
 class TTBallSource {
