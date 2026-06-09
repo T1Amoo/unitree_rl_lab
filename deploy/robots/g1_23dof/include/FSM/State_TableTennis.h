@@ -95,9 +95,17 @@ public:
                     auto pred = predictor_->update({ball[0], ball[1], ball[2]});
                     env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);  // live prediction
                 } else {
-                    // mask_invalid: hold prediction at the ready point relative to the (raw) base
+                    // No incoming ball: hold the ready target anchored at the robot's HOME
+                    // position (fixed in world), NOT the current base. Training masks the
+                    // prediction to robot_pos+offset (self-referential) — fine for the very
+                    // short gaps training saw, but self-referential has rel_target_x == -0.1
+                    // CONSTANT (target always 0.1 m behind) -> no restoring force -> over a
+                    // long no-ball gap the robot slowly drifts backward chasing it and falls.
+                    // A FIXED home anchor makes rel_target restore toward home -> stable idle.
+                    // (Equivalent to training when the robot is at home x=-1.6; adds restoring.)
                     predictor_->clear();
-                    env->tt_ball_prediction = Eigen::Vector3f(rpos[0], rpos[1] - 0.55f, 0.885f);
+                    constexpr float HOME_X = -1.6f, HOME_Y = 0.0f;   // robot's trained standing base
+                    env->tt_ball_prediction = Eigen::Vector3f(HOME_X, HOME_Y - 0.55f, 0.885f);
                 }
 
                 std::this_thread::sleep_until(sleepTill);
