@@ -127,6 +127,26 @@ void run_hysteresis(){
     printf("  run_hysteresis OK\n");
 }
 
+void run_base_track(){
+    {   // base jitter is smoothed: output base stays near the true slow base
+        PerceptionTracker t;
+        Vec3 p(1.0f,0.f,1.0f), v(-4.0f,0.f,1.7f);
+        for(int i=0;i<6;i++){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f;
+            Vec3 jb = BASE + Vec3(0.f, (i%2?0.03f:-0.03f), 0.f);  // ±3cm jitter
+            t.update(one(p), jb, true, Vec3::Zero()); }
+        assert((t.output().base - BASE).norm() < 0.02f);          // smoothed within 2cm
+    }
+    {   // base lost too long -> engaged=false even with a perfectly live ball
+        PerceptionTracker t;
+        Vec3 p(1.0f,0.f,1.0f), v(-4.0f,0.f,1.7f);
+        for(int i=0;i<6;i++){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f; t.update(one(p),BASE,true,Vec3::Zero()); }
+        assert(t.output().engaged == true);
+        for(int i=0;i<12;i++){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f; t.update(one(p),BASE,false,Vec3::Zero()); }
+        assert(t.output().engaged == false);                      // base lost -> hold
+    }
+    printf("  run_base_track OK\n");
+}
+
 int main(){
     run_volume_gate();
     run_kf_smooth_and_coast();
@@ -135,6 +155,7 @@ int main(){
     run_double_bounce();
     run_volley_reject();
     run_hysteresis();
+    run_base_track();
     printf("ALL TESTS PASSED\n");
     return 0;
 }

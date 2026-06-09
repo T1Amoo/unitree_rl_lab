@@ -98,6 +98,9 @@ private:
     int  live_run_ = 0;           // consecutive live frames
     int  dead_run_ = 0;           // consecutive not-live frames
     bool base_valid_ = true;      // driven by Task 8; default true so ball FSM controls engage
+    bool base_init_ = false;
+    Eigen::Vector3f base_p_ = Eigen::Vector3f::Zero();
+    int  base_miss_ = 0;
 
     bool compute_live() {
         if (!kf_init_) { dead_count_ = 0; return false; }
@@ -124,8 +127,22 @@ inline void PerceptionTracker::update(
         const std::vector<Eigen::Vector3f>& ball_candidates,
         const Eigen::Vector3f& base_candidate, bool has_base,
         const Eigen::Vector3f& base_vel_odom) {
-    (void)base_vel_odom;
-    if (has_base) out_.base = base_candidate;
+    // --- base track: heavy low-pass, jump reject, dropout hold/dead-reckon ---
+    if (has_base && base_candidate.allFinite()) {
+        if (!base_init_) { base_p_ = base_candidate; base_init_ = true; }
+        else {
+            float jump = (base_candidate - base_p_).norm();
+            if (jump < 0.30f) base_p_ += 0.4f * (base_candidate - base_p_);  // low-pass
+            // else: reject as a jump/reflection, keep base_p_ (no update this frame)
+        }
+        base_miss_ = 0;
+    } else {
+        base_miss_++;
+        base_p_ += base_vel_odom * cfg_.dt;   // dead-reckon (Zero() => hold last)
+        if (base_miss_ > cfg_.max_coast) base_init_ = false;
+    }
+    base_valid_ = base_init_;
+    out_.base = base_p_;
 
     // 1) predict
     if (kf_init_) kf_predict();
