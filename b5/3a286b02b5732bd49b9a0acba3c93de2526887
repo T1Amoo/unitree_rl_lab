@@ -1,0 +1,27 @@
+deploy/robots/g1_23dof/test/test_perception_tracker.cpp
+  s_2d92d93564222b::t_f0eaddf4e5bf0f 150-187,197-199
+deploy/robots/g1_23dof/include/perception_tracker.h
+  s_2d92d93564222b::t_732274c7520630 29-38
+  s_2d92d93564222b::t_33f7bb5efc0e8e 95
+  s_2d92d93564222b::t_2bab8c033b4ecc 206,209-210
+  s_2d92d93564222b::t_1cc7ccb312aef7 119
+  s_2d92d93564222b::t_0e207bacd8cd04 151
+  s_2d92d93564222b::t_38935c1282ce8e 64-68
+  s_2d92d93564222b::t_b0d161fa0e9655 193-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "b53a286b02b5732bd49b9a0acba3c93de2526887",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
