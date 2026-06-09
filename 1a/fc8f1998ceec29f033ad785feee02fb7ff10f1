@@ -1,0 +1,23 @@
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_2d92d93564222b::t_df684e082eec1d 134
+  s_2d92d93564222b::t_acefc1398e32e0 17
+  s_2d92d93564222b::t_fdfb9ec7d0dd52 76-86,88-90,92-94
+deploy/robots/g1_23dof/include/perception_tracker.h
+  s_2d92d93564222b::t_89a813ef3c4d83 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "1afc8f1998ceec29f033ad785feee02fb7ff10f1",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
