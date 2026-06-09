@@ -80,19 +80,24 @@ public:
                 tracker_.update(cands, rpos, p.base_valid, Eigen::Vector3f::Zero());
                 PTOutput s = tracker_.output();
 
-                env->tt_robot_pos = s.base;
-                // ball-position obs = the (smoothed/coasted) tracked ball at ALL times, to
-                // match training (raw ball_pos always; only the PREDICTION is masked).
-                env->tt_ball_pos = s.ball;
-                auto obs = env->observation_manager->compute();   // uses tt_ball_pos + prev-frame tt_ball_prediction
+                // OBS uses RAW mocap (exactly like training + the pre-tracker deploy): the
+                // actor obs ball_pos/robot_pos are the live raw values at ALL times — never
+                // a frozen/coasted value (that froze on out-of-volume balls during hold and
+                // caused foot jitter). The PerceptionTracker's role is ONLY the debounced
+                // ENGAGE decision (anti-spaz + dead-ball/volley/double-bounce/base-occlusion
+                // gating) which controls the predictor + the masked prediction.
+                env->tt_ball_pos  = ball;                          // raw live ball
+                env->tt_robot_pos = rpos;                          // raw base
+                auto obs = env->observation_manager->compute();    // uses tt_ball_pos + prev-frame tt_ball_prediction
                 auto action = env->alg->act(obs);
                 env->action_manager->process_action(action);
                 if (s.engaged) {
-                    auto pred = predictor_->update({s.ball[0], s.ball[1], s.ball[2]});
+                    auto pred = predictor_->update({ball[0], ball[1], ball[2]});
                     env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);  // live prediction
                 } else {
+                    // mask_invalid: hold prediction at the ready point relative to the (raw) base
                     predictor_->clear();
-                    env->tt_ball_prediction = s.prediction_hold;   // masked to ready point (training mask_invalid)
+                    env->tt_ball_prediction = Eigen::Vector3f(rpos[0], rpos[1] - 0.55f, 0.885f);
                 }
 
                 std::this_thread::sleep_until(sleepTill);
