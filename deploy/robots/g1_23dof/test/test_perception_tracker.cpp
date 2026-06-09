@@ -149,12 +149,13 @@ void run_base_track(){
 
 void run_hold_when_disengaged(){
     PerceptionTracker t;
-    // Not engaged (fresh tracker, no confirmed ball): out_.ball must equal the held
-    // ready point (prediction_hold), NOT a stale/zero KF value.
+    // When disengaged, out_.ball is the (smoothed/coasted) tracked ball estimate — NOT the
+    // ready point. Training feeds the raw ball position to the actor obs at all times; only
+    // the PREDICTION is masked to the ready point. (Holding ball_pos was OOD -> leg jitter.)
     t.update({}, BASE, true, Vec3::Zero());
     PTOutput o = t.output();
     assert(o.engaged == false);
-    assert((o.ball - o.prediction_hold).norm() < 1e-4f);   // ball held at ready point
+    assert((o.ball - t.ball_estimate()).norm() < 1e-6f);   // ball == KF estimate, not ready point
     printf("  run_hold_when_disengaged OK\n");
 }
 

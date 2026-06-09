@@ -79,22 +79,20 @@ public:
                 if (have_ball) cands.push_back(ball);
                 tracker_.update(cands, rpos, p.base_valid, Eigen::Vector3f::Zero());
                 PTOutput s = tracker_.output();
-                float rr = tracker_.engage_ramp();   // [0,1], for engage-edge ramp
 
                 env->tt_robot_pos = s.base;
-                // ball obs: held ready point when disengaged; ramped from ready->KF on engage
-                env->tt_ball_pos = s.engaged ? (s.prediction_hold + rr * (s.ball - s.prediction_hold)) : s.ball;
+                // ball-position obs = the (smoothed/coasted) tracked ball at ALL times, to
+                // match training (raw ball_pos always; only the PREDICTION is masked).
+                env->tt_ball_pos = s.ball;
                 auto obs = env->observation_manager->compute();   // uses tt_ball_pos + prev-frame tt_ball_prediction
                 auto action = env->alg->act(obs);
                 env->action_manager->process_action(action);
                 if (s.engaged) {
                     auto pred = predictor_->update({s.ball[0], s.ball[1], s.ball[2]});
-                    Eigen::Vector3f pred_live(pred[0], pred[1], pred[2]);
-                    // ramp prediction from the held ready point to the live prediction on engage
-                    env->tt_ball_prediction = s.prediction_hold + rr * (pred_live - s.prediction_hold);
+                    env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);  // live prediction
                 } else {
                     predictor_->clear();
-                    env->tt_ball_prediction = s.prediction_hold;
+                    env->tt_ball_prediction = s.prediction_hold;   // masked to ready point (training mask_invalid)
                 }
 
                 std::this_thread::sleep_until(sleepTill);

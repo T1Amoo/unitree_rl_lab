@@ -206,6 +206,8 @@ inline void PerceptionTracker::update(
     if ( tracking_ && (dead_run_ >= cfg_.coast_frames || !kf_init_))   tracking_ = false;
     out_.engaged = tracking_ && base_valid_;     // base_valid_ default true; Task 8 drives it
     out_.prediction_hold = Eigen::Vector3f(out_.base.x(), out_.base.y() + cfg_.ready_dy, cfg_.ready_dz_world);
-    if (!out_.engaged) out_.ball = out_.prediction_hold;   // hold a stable ready ball when not engaged
+    // NOTE: out_.ball stays the (smoothed/coasted) tracked ball at ALL times — training's
+    // actor obs feeds the RAW ball position always; only the PREDICTION is masked to the
+    // ready point when invalid. Holding/ramping ball_pos here was OOD and caused leg jitter.
     if (out_.engaged) engaged_run_++; else engaged_run_ = 0;
 }
