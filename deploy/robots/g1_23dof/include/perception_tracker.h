@@ -32,6 +32,7 @@ struct PTOutput {
     Eigen::Vector3f ball = Eigen::Vector3f::Zero();   // clean ball (world)
     Eigen::Vector3f base = Eigen::Vector3f::Zero();   // clean base (world)
     Eigen::Vector3f prediction_hold = Eigen::Vector3f::Zero(); // ready point (world) when not engaged
+    bool live = false;
     bool engaged = false;
 };
 
@@ -76,6 +77,20 @@ private:
     Eigen::Vector3f kf_p_ = Eigen::Vector3f::Zero();   // position estimate
     Eigen::Vector3f kf_v_ = Eigen::Vector3f::Zero();   // velocity estimate
     int miss_ = 0;                                     // consecutive frames with no matched candidate
+    int dead_count_ = 0;   // consecutive frames the ball looks dead (rolling/resting)
+
+    bool compute_live() {
+        if (!kf_init_) { dead_count_ = 0; return false; }
+        const Eigen::Vector3f& p = kf_p_;
+        const Eigen::Vector3f& v = kf_v_;
+        if (!in_volume(p)) { dead_count_ = 0; return false; }        // out of volume
+        if (v.x() > cfg_.vx_away) return false;                       // going away to opponent
+        bool on_table = (p.z() < cfg_.roll_z) && (std::abs(v.z()) < cfg_.vz_dead);
+        bool resting  = (v.norm() < cfg_.v_rest);
+        if (on_table || resting) { if (++dead_count_ >= cfg_.dead_frames) return false; }
+        else dead_count_ = 0;
+        return true;
+    }
 };
 
 // ---- out-of-line definitions ----
@@ -115,6 +130,7 @@ inline void PerceptionTracker::update(
     }
 
     out_.ball = kf_p_;
-    out_.engaged = kf_init_;     // refined by FSM in Task 7
+    out_.live = compute_live();
+    out_.engaged = out_.live;    // refined by FSM in Task 7
     out_.prediction_hold = Eigen::Vector3f(out_.base.x(), out_.base.y() + cfg_.ready_dy, cfg_.ready_dz_world);
 }

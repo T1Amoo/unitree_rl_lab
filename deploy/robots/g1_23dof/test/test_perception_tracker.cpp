@@ -51,10 +51,37 @@ void run_reflection_rejection(){
     printf("  run_reflection_rejection OK\n");
 }
 
+void run_dead_ball(){
+    {   // rolling on the table: z at table height, vz~0, moving horizontally -> dead
+        PerceptionTracker t;
+        Vec3 p(-0.4f, 0.f, 0.785f);             // on table (z≈0.78), in own half
+        Vec3 v(-1.0f, 0.f, 0.f);                // rolling toward robot, no vertical motion
+        PTOutput o;
+        for(int i=0;i<12;i++){ p+=v*0.02f; t.update(one(p),BASE,true,Vec3::Zero()); o=t.output(); }
+        assert(o.live == false);                // dead ball -> not a live target
+    }
+    {   // resting: zero velocity -> dead
+        PerceptionTracker t;
+        Vec3 p(-0.5f, 0.2f, 0.78f);
+        PTOutput o;
+        for(int i=0;i<12;i++){ t.update(one(p),BASE,true,Vec3::Zero()); o=t.output(); }
+        assert(o.live == false);
+    }
+    {   // going away (vx>0, post-hit) -> dead
+        PerceptionTracker t;
+        Vec3 p(-0.5f,0.f,1.0f), v(+4.0f,0.f,0.f);
+        PTOutput o;
+        for(int i=0;i<12;i++){ p+=v*0.02f; t.update(one(p),BASE,true,Vec3::Zero()); o=t.output(); }
+        assert(o.live == false);
+    }
+    printf("  run_dead_ball OK\n");
+}
+
 int main(){
     run_volume_gate();
     run_kf_smooth_and_coast();
     run_reflection_rejection();
+    run_dead_ball();
     printf("ALL TESTS PASSED\n");
     return 0;
 }
