@@ -94,6 +94,10 @@ private:
     int  own_bounce_count_ = 0;
     float prev_vz_ = 0.f;
     bool has_paddle_ = false;     // set by host via set_paddle_hit()
+    bool tracking_ = false;       // FSM state: false=NO_BALL(hold), true=TRACKING(engage)
+    int  live_run_ = 0;           // consecutive live frames
+    int  dead_run_ = 0;           // consecutive not-live frames
+    bool base_valid_ = true;      // driven by Task 8; default true so ball FSM controls engage
 
     bool compute_live() {
         if (!kf_init_) { dead_count_ = 0; return false; }
@@ -164,6 +168,9 @@ inline void PerceptionTracker::update(
 
     out_.ball = kf_p_;
     out_.live = compute_live();
-    out_.engaged = out_.live;    // refined by FSM in Task 7
+    if (out_.live) { live_run_++; dead_run_ = 0; } else { dead_run_++; live_run_ = 0; }
+    if (!tracking_ && live_run_ >= cfg_.confirm_frames) tracking_ = true;
+    if ( tracking_ && dead_run_ >= cfg_.coast_frames)   tracking_ = false;
+    out_.engaged = tracking_ && base_valid_;     // base_valid_ default true; Task 8 drives it
     out_.prediction_hold = Eigen::Vector3f(out_.base.x(), out_.base.y() + cfg_.ready_dy, cfg_.ready_dz_world);
 }

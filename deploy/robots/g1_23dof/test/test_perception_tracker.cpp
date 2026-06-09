@@ -111,6 +111,22 @@ void run_volley_reject(){
     printf("  run_volley_reject OK\n");
 }
 
+void run_hysteresis(){
+    PerceptionTracker t;   // confirm_frames=3, coast_frames=8 by default
+    Vec3 p(1.0f,0.f,1.0f), v(-4.0f,0.f,1.7f);
+    auto step=[&](){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f; };
+    // 1) a single live frame must NOT engage (needs K=3 consecutive)
+    step(); t.update(one(p),BASE,true,Vec3::Zero());
+    assert(t.output().engaged == false);
+    // 2) after >=3 consecutive live frames, engage
+    for(int i=0;i<4;i++){ step(); t.update(one(p),BASE,true,Vec3::Zero()); }
+    assert(t.output().engaged == true);
+    // 3) a brief 2-frame dropout must NOT disengage (coast M=8)
+    t.update({},BASE,true,Vec3::Zero()); t.update({},BASE,true,Vec3::Zero());
+    assert(t.output().engaged == true);
+    printf("  run_hysteresis OK\n");
+}
+
 int main(){
     run_volume_gate();
     run_kf_smooth_and_coast();
@@ -118,6 +134,7 @@ int main(){
     run_dead_ball();
     run_double_bounce();
     run_volley_reject();
+    run_hysteresis();
     printf("ALL TESTS PASSED\n");
     return 0;
 }
