@@ -47,6 +47,8 @@ public:
                 const Eigen::Vector3f& base_vel_odom);
 
     PTOutput output() const { return out_; }
+    Eigen::Vector3f ball_estimate() const { return kf_p_; }
+    Eigen::Vector3f ball_velocity() const { return kf_v_; }
 
 private:
     bool in_volume(const Eigen::Vector3f& p) const {
@@ -55,10 +57,25 @@ private:
                p.z() >= cfg_.z_min && p.z() <= cfg_.z_max &&
                p.allFinite();
     }
+    void kf_predict() {            // advance estimate by dt with gravity on z
+        kf_p_ += kf_v_ * cfg_.dt;
+        kf_p_.z() += 0.5f * (-cfg_.g) * cfg_.dt * cfg_.dt;
+        kf_v_.z() += (-cfg_.g) * cfg_.dt;
+    }
+    void kf_correct(const Eigen::Vector3f& z) {        // simple alpha-beta correction
+        const float a = 0.5f, b = 0.3f / cfg_.dt;      // position/velocity blend gains
+        Eigen::Vector3f resid = z - kf_p_;
+        kf_p_ += a * resid;
+        kf_v_ += b * resid;
+    }
 
     PTConfig cfg_;
     PTOutput out_;
-    // (filter + FSM state added in later tasks)
+    // --- ball KF state (constant velocity + gravity) ---
+    bool kf_init_ = false;
+    Eigen::Vector3f kf_p_ = Eigen::Vector3f::Zero();   // position estimate
+    Eigen::Vector3f kf_v_ = Eigen::Vector3f::Zero();   // velocity estimate
+    int miss_ = 0;                                     // consecutive frames with no matched candidate
 };
 
 // ---- out-of-line definitions ----
@@ -68,11 +85,25 @@ inline void PerceptionTracker::update(
         const Eigen::Vector3f& base_vel_odom) {
     (void)base_vel_odom;
     if (has_base) out_.base = base_candidate;
-    // Minimal: accept a single in-volume candidate as the ball, else not engaged.
-    bool any_valid = false;
-    for (const auto& c : ball_candidates) {
-        if (in_volume(c)) { out_.ball = c; any_valid = true; break; }
+
+    // 1) predict
+    if (kf_init_) kf_predict();
+
+    // 2) pick a matched candidate (Task 3 adds continuity; here: first in-volume)
+    const Eigen::Vector3f* matched = nullptr;
+    for (const auto& c : ball_candidates) { if (in_volume(c)) { matched = &c; break; } }
+
+    // 3) correct or coast
+    if (matched) {
+        if (!kf_init_) { kf_p_ = *matched; kf_v_.setZero(); kf_init_ = true; }
+        else kf_correct(*matched);
+        miss_ = 0;
+    } else {
+        miss_++;
+        if (miss_ > cfg_.max_coast) kf_init_ = false;   // lost track
     }
-    out_.engaged = any_valid;     // refined by gating/FSM in later tasks
+
+    out_.ball = kf_p_;
+    out_.engaged = kf_init_;     // refined by FSM in Task 7
     out_.prediction_hold = Eigen::Vector3f(out_.base.x(), out_.base.y() + cfg_.ready_dy, cfg_.ready_dz_world);
 }
