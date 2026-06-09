@@ -53,6 +53,18 @@ public:
     void set_paddle_hit(bool hit) { has_paddle_ = hit; }
 
 private:
+    float predicted_first_bounce_x() const {
+        // analytic: from kf_p_, kf_v_ under gravity, time to reach z=0.78 (descending root)
+        const float zt = 0.78f;
+        float a = -0.5f * cfg_.g, b = kf_v_.z(), c = kf_p_.z() - zt;
+        float disc = b*b - 4*a*c;
+        if (disc < 0) return 1e9f;                  // never reaches table -> treat as out
+        float t1 = (-b - std::sqrt(disc)) / (2*a);
+        float t2 = (-b + std::sqrt(disc)) / (2*a);
+        float t = std::max(t1, t2);                 // larger positive root (descending crossing)
+        if (t <= 0) return 1e9f;
+        return kf_p_.x() + kf_v_.x() * t;
+    }
     bool in_volume(const Eigen::Vector3f& p) const {
         return p.x() >= cfg_.x_min && p.x() <= cfg_.x_max &&
                std::abs(p.y()) <= cfg_.y_abs &&
@@ -89,6 +101,11 @@ private:
         const Eigen::Vector3f& v = kf_v_;
         if (!in_volume(p)) { dead_count_ = 0; return false; }        // out of volume
         if (v.x() > cfg_.vx_away) return false;                       // going away to opponent
+        if (own_bounce_count_ == 0) {
+            float bx = predicted_first_bounce_x();
+            // first table contact must be in the own half to be a legal, playable ball
+            if (!(bx >= cfg_.own_x_lo && bx <= cfg_.own_x_hi)) return false;  // volley/out
+        }
         bool on_table = (p.z() < cfg_.roll_z) && (std::abs(v.z()) < cfg_.vz_dead);
         bool resting  = (v.norm() < cfg_.v_rest);
         if (on_table || resting) { if (++dead_count_ >= cfg_.dead_frames) return false; }

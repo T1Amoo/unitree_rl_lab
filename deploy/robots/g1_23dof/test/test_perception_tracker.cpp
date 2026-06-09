@@ -93,12 +93,31 @@ void run_double_bounce(){
     printf("  run_double_bounce OK\n");
 }
 
+void run_volley_reject(){
+    {   // flat fast ball that will NOT bounce in own half (flies long/over) -> not live
+        PerceptionTracker t;
+        Vec3 p(1.2f,0.f,1.05f), v(-10.0f,0.f,1.5f);  // hard rising drive -> first table contact x≈-3 (out, past own-half end)
+        PTOutput o;
+        for(int i=0;i<5;i++){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f; t.update(one(p),BASE,true,Vec3::Zero()); o=t.output(); }
+        assert(o.live == false);   // volley/out -> robot must NOT engage
+    }
+    {   // normal serve that WILL bounce in own half (~x=-0.6) -> live
+        PerceptionTracker t;
+        Vec3 p(1.0f,0.f,1.0f), v(-4.0f,0.f,1.7f);
+        PTOutput o;
+        for(int i=0;i<5;i++){ p+=v*0.02f; v.z()+=(-9.81f)*0.02f; t.update(one(p),BASE,true,Vec3::Zero()); o=t.output(); }
+        assert(o.live == true);
+    }
+    printf("  run_volley_reject OK\n");
+}
+
 int main(){
     run_volume_gate();
     run_kf_smooth_and_coast();
     run_reflection_rejection();
     run_dead_ball();
     run_double_bounce();
+    run_volley_reject();
     printf("ALL TESTS PASSED\n");
     return 0;
 }
