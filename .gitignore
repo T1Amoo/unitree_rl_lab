@@ -3,6 +3,7 @@
 **/build*/
 **/*.so
 **/*.log*
+**/MUJOCO_LOG.TXT
 
 # Omniverse
 **/*.dmp
