@@ -1,0 +1,30 @@
+.gitignore
+  s_2d92d93564222b::t_f690b21f5e3812 6
+deploy/robots/g1_23dof/sim2sim/tt_sim_mujoco.py
+  s_2d92d93564222b::t_761de526c814d8 135-137
+  s_2d92d93564222b::t_527724e555bb24 182-185
+deploy/robots/g1_23dof/sim2sim/run_deploy.sh
+  s_2d92d93564222b::t_147215dbfc74a7 11
+deploy/robots/g1_23dof/sim2sim/serve.py
+  s_2d92d93564222b::t_aa2919f2a08cae 3-6,11-15,34-43
+  s_2d92d93564222b::t_774101389b9b50 10
+  s_2d92d93564222b::t_dbb686400de1cd 16-21
+deploy/robots/g1_23dof/config/config.yaml
+  s_2d92d93564222b::t_a1f062dd9d5d15 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "ef30bc94cce6cdb922044b10c0981c2f9e1c91f6",
+  "prompts": {},
+  "sessions": {
+    "s_2d92d93564222b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b839b76-d802-4056-9521-f7cef4596b2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
