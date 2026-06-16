@@ -93,7 +93,17 @@ public:
                 env->action_manager->process_action(action);
                 if (s.engaged) {
                     auto pred = predictor_->update({ball[0], ball[1], ball[2]});
-                    env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);  // live prediction
+                    // Predictor warm-up: ENGAGE clears the history, so TTPredictor left-pads with
+                    // the current ball -> a "stationary ball" guess for the first H frames -> a
+                    // discontinuous rel_target jump that lurches the policy at serve (the deploy-
+                    // side twin of the IsaacLab Bug B). Hold the HOME anchor until H fresh real
+                    // frames accumulate, then trust the MLP.
+                    if (++engage_frames_ >= PRED_WARMUP) {
+                        env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);  // live prediction
+                    } else {
+                        constexpr float HOME_X = -1.6f, HOME_Y = 0.0f;
+                        env->tt_ball_prediction = Eigen::Vector3f(HOME_X, HOME_Y - 0.55f, 0.885f);
+                    }
                 } else {
                     // No incoming ball: hold the ready target anchored at the robot's HOME
                     // position (fixed in world), NOT the current base. Training masks the
@@ -104,6 +114,7 @@ public:
                     // A FIXED home anchor makes rel_target restore toward home -> stable idle.
                     // (Equivalent to training when the robot is at home x=-1.6; adds restoring.)
                     predictor_->clear();
+                    engage_frames_ = 0;
                     constexpr float HOME_X = -1.6f, HOME_Y = 0.0f;   // robot's trained standing base
                     env->tt_ball_prediction = Eigen::Vector3f(HOME_X, HOME_Y - 0.55f, 0.885f);
                 }
@@ -149,6 +160,8 @@ private:
     std::ofstream traj_log_;   // DIAG: per-step commanded vs actual joint angles
     std::thread policy_thread;
     bool policy_thread_running = false;
+    int engage_frames_ = 0;                  // frames since ENGAGE; predictor warm-up gate
+    static constexpr int PRED_WARMUP = 5;    // = TTPredictor history_len; hold HOME until filled
 };
 
 REGISTER_FSM(State_TableTennis)

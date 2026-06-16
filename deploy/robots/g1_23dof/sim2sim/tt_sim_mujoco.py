@@ -15,6 +15,7 @@ Run via run_sim.sh (conda run --no-capture-output). Scene/domain come from
 unitree_mujoco's config.py (ROBOT=g1, ROBOT_SCENE=our TT scene, DOMAIN_ID=1).
 """
 import sys
+import os
 import time
 import threading
 import numpy as np
@@ -135,6 +136,12 @@ def SimulationThread():
     ball_age = 0           # control ticks (50Hz) since last serve
     MAX_BALL_AGE = 150     # 3 s safety timeout (unused now that serve is fixed-cadence)
     SERVE_INTERVAL = 250   # fixed serve cadence: 250 ctrl steps @50Hz = 5 s per ball
+    # No-ball window: the LAST NOBALL_STEPS of each serve cycle have NO ball -> the deploy's
+    # invalid-ball gate drives a stable HOME-anchor idle (mirrors Isaac TT_SERVE_PERIOD no-ball
+    # injection used to test idle). Default 125 ctrl steps = 2.5 s -> 50/50 ball/no-ball, matching
+    # TT_SERVE_PERIOD=5. Set TT_NOBALL_STEPS=0 for the old always-ball behavior.
+    NOBALL_STEPS = int(os.environ.get("TT_NOBALL_STEPS", "125"))
+    noball_now = False
     last_reset = -100000
     RESET_COOLDOWN = 750   # >=1.5 s between auto-resets so recovery (p/f) isn't fought
     print("[tt_sim] focus the MuJoCo window, then: f=FixStand g=TableTennis p=Passive | 8=lower 7=raise 9=release | q=quit", flush=True)
@@ -189,11 +196,19 @@ def SimulationThread():
                 mj_data.qvel[ball_vadr:ball_vadr + 3] = vel
                 mj_data.qvel[ball_vadr + 3:ball_vadr + 6] = 0.0
                 ball_age = 0
+                noball_now = False
+            elif NOBALL_STEPS > 0 and ball_age == (SERVE_INTERVAL - NOBALL_STEPS):
+                # enter no-ball window: park the ball far underground (out of sight) and flag it
+                # so the mocap publish below sends (0,0,0) -> C++ have_ball=false -> idle.
+                mj_data.qpos[ball_qadr:ball_qadr + 3] = [0.0, 0.0, -50.0]
+                mj_data.qvel[ball_vadr:ball_vadr + 6] = 0.0
+                noball_now = True
         # publish mocap FASTER than control (every PUB_DECIM steps) so the deploy
         # always reads a fresh ball pose -> low perception latency (training delay
         # was ~4-10 ms). The deploy's predictor still consumes at its own 50 Hz.
         if cnt % PUB_DECIM == 0:
-            pub.publish(mj_data.xpos[ball_bid].copy(),
+            ball_xpos = np.zeros(3) if noball_now else mj_data.xpos[ball_bid].copy()
+            pub.publish(ball_xpos,
                         mj_data.xpos[pelvis_bid].copy(),
                         mj_data.xquat[pelvis_bid].copy())
 
