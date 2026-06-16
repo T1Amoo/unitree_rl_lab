@@ -1,0 +1,25 @@
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_e9c28ec27b7fc3::t_ec00cc275ff29a 96-106,117
+  s_e9c28ec27b7fc3::t_fe1f5dde47a59d 163-164
+deploy/robots/g1_23dof/sim2sim/tt_sim_mujoco.py
+  s_e9c28ec27b7fc3::t_4e4e759dd6eab3 199-205
+  s_e9c28ec27b7fc3::t_a84b470151bd81 210-211
+  s_e9c28ec27b7fc3::t_1f993b9064e4bd 18
+  s_e9c28ec27b7fc3::t_e93d800bdfb4f2 139-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "4e1d821c22e7be955b00d510f38f6e68cab882e9",
+  "prompts": {},
+  "sessions": {
+    "s_e9c28ec27b7fc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3acc873d-713d-4d72-afa1-87601aa0e0f1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
