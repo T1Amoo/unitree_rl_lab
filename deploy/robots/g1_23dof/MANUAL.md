@@ -241,7 +241,7 @@ LD_LIBRARY_PATH=$CONDA_PREFIX/lib:/usr/local/lib \
 ## 7. 真机剩余准备(代码无关)
 
 1. **标定数值**(§6c)+ `main.cpp` domain(§6a)。
-2. **PD/扭矩实测安全**:`config.yaml` 现只有 FixStand 的 kp/kd;确认 TableTennis 段真机增益不超扭矩。
+2. **PD 增益**:乒乓段的 kp/kd **不在 config.yaml**,而是训练导出的 `<policy>/params/deploy.yaml` 里的 `stiffness`/`damping`(= 训练 implicit actuator,NF=10·2π、ζ=2),`State_TableTennis::enter()` 逐关节写进 motor cmd → **deploy PD = 训练 PD,sim/real 一致**。config.yaml 的 kp/kd 只给 Passive/FixStand。真机上要核的是这套增益在**真实电机的扭矩上限/发热**下是否安全(不是"缺 PD")。
 3. **球拍**:真实质量/惯量/回弹 vs 训练刚性 mesh 的差异。
 4. **安全**:关节限位钳制、急停、摔倒保护、人工安全启动。
 5. **⚠️ 感知丢帧鲁棒性**:sim 实测 0.4s mocap 丢帧就接不住会摔(§5c blackout 测出)。真机 mocap 必有遮挡/丢帧 → 真机前大概率要回去训一版抗丢帧的(训练加整段丢帧随机化 / predictor 历史外推)。
