@@ -1,0 +1,89 @@
+deploy/robots/g1_23dof/config/config.yaml
+  s_e9c28ec27b7fc3::t_766706689792fe 72-101
+deploy/robots/g1_23dof/main.cpp
+  s_e9c28ec27b7fc3::t_e098bbcbb9d378 37-43
+deploy/robots/g1_23dof/config/policy/table_tennis/v2/record/ref_robot.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v2/check_masked.py
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-135
+deploy/robots/g1_23dof/config/policy/table_tennis/v1/record/ref_robot.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v3/infer_scales.py
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-188
+deploy/robots/g1_23dof/config/policy/table_tennis/v3/record/ref_replay.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v2/record/ref_replay.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v3/check_masked.py
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-135
+deploy/robots/g1_23dof/config/policy/table_tennis/v5/record/ref_replay.csv
+  s_e9c28ec27b7fc3::t_28f9da0444af27 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v1/infer_scales.py
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-188
+deploy/robots/g1_23dof/config/policy/table_tennis/v1/record/ref_replay.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/sim2sim/serve.py
+  s_e9c28ec27b7fc3::t_52b8964f18b828 35-43,52-68
+  s_e9c28ec27b7fc3::t_a7e944c7380070 9
+  s_e9c28ec27b7fc3::t_cb8929ad1b5c39 22
+deploy/robots/g1_23dof/config/policy/table_tennis/v3/record/ref_robot.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v4/infer_scales.py
+  s_e9c28ec27b7fc3::t_50250d2b9d0d90 1-188
+deploy/robots/g1_23dof/config/policy/table_tennis/v1/params/deploy.yaml
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-94
+deploy/robots/g1_23dof/config/policy/table_tennis/v3/params/deploy.yaml
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-94
+deploy/robots/g1_23dof/MANUAL.md
+  s_e9c28ec27b7fc3::t_d80548616ca998 186-187
+  s_e9c28ec27b7fc3::t_24c032e639a837 1-185,188-258
+deploy/robots/g1_23dof/config/policy/table_tennis/v1/check_masked.py
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-135
+deploy/robots/g1_23dof/sim2sim/tt_sim_mujoco.py
+  s_e9c28ec27b7fc3::t_52f0e974472e3f 145-150
+  s_e9c28ec27b7fc3::t_2ec7f752ebe00b 216-217
+deploy/robots/g1_23dof/config/policy/table_tennis/v2/infer_scales.py
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-188
+deploy/robots/g1_23dof/config/policy/table_tennis/v4/record/ref_replay.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v4/check_masked.py
+  s_e9c28ec27b7fc3::t_50250d2b9d0d90 1-135
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_e9c28ec27b7fc3::t_d5b10c7a96b84e 103-114
+  s_e9c28ec27b7fc3::t_d0d5df09d07d77 34-42,45-47,51-52,55
+  s_e9c28ec27b7fc3::t_db79519cb8a3c1 43-44,48-50,56
+deploy/robots/g1_23dof/config/policy/table_tennis/v5/infer_scales.py
+  s_e9c28ec27b7fc3::t_28f9da0444af27 1-188
+deploy/robots/g1_23dof/config/policy/table_tennis/v2/params/deploy.yaml
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-94
+deploy/robots/g1_23dof/config/policy/table_tennis/v4/record/ref_robot.csv
+  s_e9c28ec27b7fc3::t_5105b1bf7b1c22 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v5/params/deploy.yaml
+  s_e9c28ec27b7fc3::t_28f9da0444af27 1-94
+deploy/robots/g1_23dof/include/tt_ros_ball_source.h
+  s_e9c28ec27b7fc3::t_5da4e939fbff85 5
+  s_e9c28ec27b7fc3::t_abf2f283f7fc23 3,26-28,31,35-36,38-39,47-49,55-57,74-84,86-89,101-102
+  s_e9c28ec27b7fc3::t_749695171862f2 7,13-25,32-34,37,40-43,45,53,85,90-91
+deploy/robots/g1_23dof/config/policy/table_tennis/v4/params/deploy.yaml
+  s_e9c28ec27b7fc3::t_50250d2b9d0d90 1-94
+deploy/robots/g1_23dof/config/policy/table_tennis/v5/record/ref_robot.csv
+  s_e9c28ec27b7fc3::t_28f9da0444af27 1-601
+deploy/robots/g1_23dof/config/policy/table_tennis/v5/check_masked.py
+  s_e9c28ec27b7fc3::t_28f9da0444af27 1-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "cb2ab8aa68a3d8fccfeea7fe50d2fff5f41d69a9",
+  "prompts": {},
+  "sessions": {
+    "s_e9c28ec27b7fc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3acc873d-713d-4d72-afa1-87601aa0e0f1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
