@@ -142,6 +142,12 @@ def SimulationThread():
     # TT_SERVE_PERIOD=5. Set TT_NOBALL_STEPS=0 for the old always-ball behavior.
     NOBALL_STEPS = int(os.environ.get("TT_NOBALL_STEPS", "125"))
     noball_now = False
+    # Perception BLACKOUT test: the ball keeps FLYING (physics untouched), but its mocap is DROPPED
+    # for TT_BLACKOUT_LEN ctrl steps starting TT_BLACKOUT_START after each serve -> the deploy loses
+    # sight of it mid-flight and re-detects it later at its MOVED (flown-on) position (NOT where it
+    # vanished). Tests perception-dropout robustness. Default off (TT_BLACKOUT_LEN=0); 50 steps = 1 s.
+    BLACKOUT_START = int(os.environ.get("TT_BLACKOUT_START", "20"))
+    BLACKOUT_LEN = int(os.environ.get("TT_BLACKOUT_LEN", "0"))
     last_reset = -100000
     RESET_COOLDOWN = 750   # >=1.5 s between auto-resets so recovery (p/f) isn't fought
     print("[tt_sim] focus the MuJoCo window, then: f=FixStand g=TableTennis p=Passive | 8=lower 7=raise 9=release | q=quit", flush=True)
@@ -207,7 +213,8 @@ def SimulationThread():
         # always reads a fresh ball pose -> low perception latency (training delay
         # was ~4-10 ms). The deploy's predictor still consumes at its own 50 Hz.
         if cnt % PUB_DECIM == 0:
-            ball_xpos = np.zeros(3) if noball_now else mj_data.xpos[ball_bid].copy()
+            blackout_now = (BLACKOUT_LEN > 0 and BLACKOUT_START <= ball_age < BLACKOUT_START + BLACKOUT_LEN)
+            ball_xpos = np.zeros(3) if (noball_now or blackout_now) else mj_data.xpos[ball_bid].copy()
             pub.publish(ball_xpos,
                         mj_data.xpos[pelvis_bid].copy(),
                         mj_data.xquat[pelvis_bid].copy())

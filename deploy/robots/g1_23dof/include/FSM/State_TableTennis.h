@@ -31,9 +31,29 @@ public:
         env->alg = std::make_unique<isaaclab::OrtRunner>(policy_dir / "exported" / "policy.onnx");
         predictor_ = std::make_unique<TTPredictor>((policy_dir / "exported" / "predictor.onnx").string(), 5);
 
+        // Mocap topic names + room->training-world frame calibration (site config).
+        // Defaults = the sim2sim case (/mocap topics, identity transform) so a config
+        // without these keys is unchanged; real VRPN overrides them in config.yaml.
+        std::string ball_topic = "/mocap/ball/pose";
+        std::string base_topic = "/mocap/base/pose";
+        if (cfg["ros"]) {
+            if (cfg["ros"]["ball_topic"]) ball_topic = cfg["ros"]["ball_topic"].as<std::string>();
+            if (cfg["ros"]["base_topic"]) base_topic = cfg["ros"]["base_topic"].as<std::string>();
+        }
+        std::array<float, 4> quat_wxyz = {1.f, 0.f, 0.f, 0.f};   // rotation M->W (w,x,y,z)
+        std::array<float, 3> origin = {0.f, 0.f, 0.f};           // M-origin in W
+        if (cfg["input_frame"]) {
+            auto fr = cfg["input_frame"];
+            if (fr["origin_in_training_world"] && fr["origin_in_training_world"].size() == 3)
+                for (int i = 0; i < 3; ++i) origin[i] = fr["origin_in_training_world"][i].as<float>();
+            if (fr["rotation_wxyz_to_training"] && fr["rotation_wxyz_to_training"].size() == 4)
+                for (int i = 0; i < 4; ++i) quat_wxyz[i] = fr["rotation_wxyz_to_training"][i].as<float>();
+        }
+
         // ROS2 node + spin thread (rclcpp::init() is done in main before the FSM is built)
         ros_node_ = std::make_shared<rclcpp::Node>("g1_tt_deploy");
-        ball_src_ = std::make_unique<RosBallSource>(ros_node_);
+        ball_src_ = std::make_unique<RosBallSource>(ros_node_, ball_topic, base_topic,
+                                                    quat_wxyz, origin);
         std::thread([n = ros_node_]{ rclcpp::spin(n); }).detach();
 
         registered_checks.emplace_back(std::make_pair(
@@ -80,13 +100,18 @@ public:
                 tracker_.update(cands, rpos, p.base_valid, Eigen::Vector3f::Zero());
                 PTOutput s = tracker_.output();
 
-                // OBS uses RAW mocap (exactly like training + the pre-tracker deploy): the
-                // actor obs ball_pos/robot_pos are the live raw values at ALL times — never
-                // a frozen/coasted value (that froze on out-of-volume balls during hold and
-                // caused foot jitter). The PerceptionTracker's role is ONLY the debounced
-                // ENGAGE decision (anti-spaz + dead-ball/volley/double-bounce/base-occlusion
-                // gating) which controls the predictor + the masked prediction.
-                env->tt_ball_pos  = ball;                          // raw live ball
+                // OBS ball-slot gating (match TRAINING): training gates the actor's perception
+                // ball slot [0:3] to the FIXED home sentinel (-1.6,-0.55,0.885) whenever there is
+                // no valid live ball (mask_invalid), and feeds the RAW ball only while a ball is
+                // live. A PRIOR deploy build instead held a BASE-RELATIVE ready point when idle
+                // (out_.prediction_hold, anchored to the moving base) -> self-referential drift ->
+                // foot jitter, and was reverted to "raw always" under the mistaken belief that
+                // training feeds raw always (it does NOT — it gates to the fixed sentinel). Use
+                // the FIXED sentinel here (world/table frame, NOT base-relative) so the idle obs
+                // and the serve transition match training exactly. robot slot stays raw (training
+                // leaves [3:6] untouched).
+                env->tt_ball_pos  = s.engaged ? ball
+                                              : Eigen::Vector3f(-1.6f, -0.55f, 0.885f);  // home sentinel when idle
                 env->tt_robot_pos = rpos;                          // raw base
                 auto obs = env->observation_manager->compute();    // uses tt_ball_pos + prev-frame tt_ball_prediction
                 auto action = env->alg->act(obs);

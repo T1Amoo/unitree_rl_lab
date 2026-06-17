@@ -34,8 +34,13 @@ int main(int argc, char** argv)
     std::cout << " --- Unitree Robotics --- \n";
     std::cout << "     G1-23dof Controller \n";
 
-    // Unitree DDS Config
-    unitree::robot::ChannelFactory::Instance()->Init(1, vm["network"].as<std::string>()); // domain 1 = unitree_mujoco sim2sim
+    // Unitree DDS Config. unitree_mujoco sim2sim runs on domain 1 over loopback
+    // (--network lo); the real G1 runs on domain 0 over its NIC (--network eth0 /
+    // enpXs0). Pick the domain from the interface so one binary serves both without
+    // a recompile.
+    const std::string network = vm["network"].as<std::string>();
+    const bool local_sim = (network == "lo" || network == "lo0");
+    unitree::robot::ChannelFactory::Instance()->Init(local_sim ? 1 : 0, network);
 
     init_fsm_state();
 

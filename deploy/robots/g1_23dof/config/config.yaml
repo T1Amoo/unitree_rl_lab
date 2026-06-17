@@ -69,4 +69,33 @@ FSM:
   TableTennis:
     transitions:
       Passive: LT + B.on_pressed
-    policy_dir: config/policy/table_tennis/v3
+    policy_dir: config/policy/table_tennis/v5
+    # Mocap topic names. Defaults below match the sim2sim publisher (ros_publish.py).
+    # On the real robot, point these at your VRPN/Nokov/OptiTrack rigid-body topics,
+    # e.g.  ball_topic: /vrpn_mocap/U_Tracker0/pose   (ball rigid body)
+    #       base_topic: /vrpn_mocap/g1/pose           (robot pelvis rigid body)
+    # Both must be geometry_msgs/PoseStamped. The mocap node must use a BEST_EFFORT
+    # QoS (the subscriber uses SensorDataQoS keep_last(50)) or no messages arrive.
+    ros:
+      ball_topic: /mocap/ball/pose
+      base_topic: /mocap/base/pose
+    # Mocap-room frame M  ->  training world frame W:  p_W = R_WM * p_M + origin.
+    # The sim publishes already in W, so the defaults (identity rotation, zero
+    # origin) are a pass-through and leave sim2sim unchanged.
+    #
+    # For the REAL robot you MUST calibrate these, or the ball/base land in the
+    # wrong place and the policy is garbage:
+    #   - Set up the mocap room frame so its axes match training W:
+    #       origin at table/net center, +x robot->opponent (robot at -x), +y along
+    #       net (robot-left), +z up. Then rotation stays identity and you only need
+    #       the origin offset (where the mocap origin sits in W).
+    #   - Our training W places the table center at its trained coordinates; set
+    #       origin_in_training_world to that point expressed in mocap coordinates'
+    #       negative (i.e. so that mocap-origin maps there).
+    #   - Z offset procedure: hold the robot still in FixStand, record ~1 s of the
+    #       base topic, then origin_z = (training reset base height) - mean(raw mocap z).
+    #   - If the mocap axes are NOT aligned to W, set rotation_wxyz_to_training to the
+    #       quaternion (w,x,y,z) rotating a mocap vector into W.
+    input_frame:
+      origin_in_training_world: [0.0, 0.0, 0.0]
+      rotation_wxyz_to_training: [1.0, 0.0, 0.0, 0.0]
