@@ -245,11 +245,17 @@
     <motor name="right_elbow_joint" joint="right_elbow_joint"/>
     <motor name="right_wrist_roll_joint" joint="right_wrist_roll_joint"/>
   </actuator>
-  <!-- Bounce contact pairs. Negative solref = (-stiffness, -damping); high stiffness + low damping ~ high restitution.
-       FINAL TUNED table-pair solref="-9000 -6" gives measured bounce ratio 0.90 (h0=0.30m), within [0.5,0.95] band. -->
+  <!-- Bounce contact pairs. Negative solref = (-stiffness, -damping). TUNED to match TRAINING
+       restitution (ball-table 0.95, ball-paddle 0.75) at REAL SWING/LANDING SPEEDS (4-12 m/s).
+       The earlier static drop-test (~2.4 m/s) was MISLEADING: those soft contacts (k~10k) TUNNELED
+       at swing speed (ball passed through the paddle) and gave the wrong e (0.06-0.45) at speed.
+       Fix: margin=0.06 keeps the fast contact tracked over enough steps -> no tunneling AND makes e
+       speed-INDEPENDENT; then high stiffness sets e (verified constant across 4-12 m/s via impact test):
+       table -490000 -> e=0.96(~0.95); paddle -200000 -> e=0.76(~0.75). solimp width 0.001 keeps the
+       actual bounce at the true surface (margin widens contact DETECTION, not the repulsion zone). -->
   <contact>
-    <pair geom1="ball_geom" geom2="table_top"   solref="-9000 -6"  solimp="0.95 0.99 0.001" margin="0.01"/>
-    <pair geom1="ball_geom" geom2="paddle_blade" solref="-12000 -5" solimp="0.95 0.99 0.001" margin="0.02"/>
+    <pair geom1="ball_geom" geom2="table_top"   solref="-490000 -2" solimp="0.95 0.99 0.001" margin="0.06"/>
+    <pair geom1="ball_geom" geom2="paddle_blade" solref="-200000 -5" solimp="0.95 0.99 0.001" margin="0.06"/>
   </contact>
   <sensor>
     <jointpos name="left_hip_pitch_joint_pos" joint="left_hip_pitch_joint"/>

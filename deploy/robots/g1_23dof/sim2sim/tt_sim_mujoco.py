@@ -207,6 +207,13 @@ def SimulationThread():
         else:
             mj_data.xfrc_applied[band_link] = 0.0
 
+        # Air drag on the ball to MATCH TRAINING (Isaac AeroForceField, cd=0.4378). mujoco models
+        # zero aerodynamic drag by default, so hit returns fly too far and overshoot the table
+        # (sim2sim gap: high hit-rate but balls don't land). F = -0.5*rho*A*cd*|v|*v (world frame).
+        _v = mj_data.qvel[ball_vadr:ball_vadr + 3]
+        _sp = float(np.linalg.norm(_v))
+        mj_data.xfrc_applied[ball_bid, :3] = (-0.5 * 1.225 * (np.pi * 0.02 ** 2) * 0.4378 * _sp) * _v
+
         mujoco.mj_step(mj_model, mj_data)
         apply_chord(bridge.low_state)
         set_stick(bridge.low_state)

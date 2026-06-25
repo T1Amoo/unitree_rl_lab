@@ -3,7 +3,7 @@
 # 15-19, right arm 22-26), so identity would scramble the arms onto the wrong
 # motors. FixStand/Passive read this; keep it identical to each policy's
 # deploy.yaml joint_ids_map (used by the TableTennis read/write path).
-joint_ids_map: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+joint_ids_map: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26]
 
 FSM:
   _: # enabled fsms
@@ -77,7 +77,7 @@ FSM:
   TableTennis:
     transitions:
       Passive: LT + B.on_pressed
-    policy_dir: config/policy/table_tennis/v8_33000
+    policy_dir: config/policy/table_tennis/v10_41200
     # Mocap topic names. Defaults below match the sim2sim publisher (ros_publish.py).
     # On the real robot, point these at your VRPN/Nokov/OptiTrack rigid-body topics,
     # e.g.  ball_topic: /vrpn_mocap/U_Tracker0/pose   (ball rigid body)

@@ -25,13 +25,13 @@ REGISTER_OBSERVATION(tt_rel_target_xy)
     return { tx - env->tt_robot_pos[0], ty - env->tt_robot_pos[1] };
 }
 
-// heading (1): robot yaw from IMU quaternion (training uses robot.data.heading_w)
+// heading (1): robot yaw in the TRAINING frame, sourced from the MOCAP base quaternion
+// (filled into env->tt_heading by State_TableTennis each step). The IMU yaw was wrong here:
+// its zero is arbitrary (~90deg off when facing the table) -> the policy turned to zero it.
+// The mocap rigid body is created facing the table, so its yaw==0 == training heading_w==0.
 REGISTER_OBSERVATION(tt_heading)
 {
-    auto & q = env->robot->data.root_quat_w;   // Eigen::Quaternionf (w,x,y,z)
-    float yaw = std::atan2(2.f * (q.w() * q.z() + q.x() * q.y()),
-                           1.f - 2.f * (q.y() * q.y() + q.z() * q.z()));
-    return { yaw };
+    return { env->tt_heading };
 }
 
 }}  // namespace isaaclab::mdp

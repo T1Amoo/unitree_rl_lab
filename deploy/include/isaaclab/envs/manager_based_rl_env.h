@@ -80,6 +80,7 @@ public:
     Eigen::Vector3f tt_ball_pos = Eigen::Vector3f::Zero();        // ball pos (table frame), env-local
     Eigen::Vector3f tt_robot_pos = Eigen::Vector3f::Zero();       // robot base pos rel table
     Eigen::Vector3f tt_ball_prediction = Eigen::Vector3f::Zero(); // filled by predictor each step
+    float tt_heading = 0.f;                                       // robot yaw in training frame (from mocap base quat)
 };
 
 };

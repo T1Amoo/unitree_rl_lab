@@ -11,8 +11,9 @@
 
 // Live perception source: subscribes to the mocap topics published by the sim
 // (and, on hardware, by a VRPN/Nokov/OptiTrack mocap node). Drop-in replacement
-// for ReplayBallSource. heading is left 0 — deploy sources heading from IMU via
-// the tt_heading obs term.
+// for ReplayBallSource. heading is left 0 here — the TT state fills env->tt_heading
+// from the IMU yaw (the mocap base-quat flips ~180deg on occlusion, so it is unsafe
+// as a heading source).
 //
 // Two site-dependent things are configurable (see State_TableTennis ctor, which
 // reads them from config.yaml's TableTennis section):
@@ -63,7 +64,7 @@ public:
         TTPerception p;
         p.ball_pos[0] = bx_; p.ball_pos[1] = by_; p.ball_pos[2] = bz_;
         p.robot_pos[0] = rx_; p.robot_pos[1] = ry_; p.robot_pos[2] = rz_;
-        p.heading = 0.0f;
+        p.heading = 0.0f;   // unused: TT state sources heading from the IMU (mocap quat flips)
         long long t = now_ns();
         p.ball_valid = (ball_t_.load() != 0) && (t - ball_t_.load() < STALE_NS);
         p.base_valid = (base_t_.load() != 0) && (t - base_t_.load() < STALE_NS);

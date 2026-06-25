@@ -110,6 +110,7 @@ public:
             auto sleepTill = clock::now() + dt;
 
             env->reset();
+            yaw0_set_ = false;   // capture IMU heading zero-ref on the first frame of this entry
             long t = 0;
             while (policy_thread_running) {
                 env->robot->update();                              // proprio from DDS
@@ -136,6 +137,19 @@ public:
                 env->tt_ball_pos  = s.engaged ? ball
                                               : Eigen::Vector3f(-2.0f, -0.55f, 0.885f);  // home sentinel when idle (v7: hit_plane_x=-2.0; was -1.6 for v5)
                 env->tt_robot_pos = rpos;                          // raw base
+                // heading = IMU yaw minus a home offset captured at entry. NOT the mocap base quat
+                // (p.heading): the mocap rigid-body orientation flips ~180deg on marker occlusion ->
+                // garbage heading -> the policy spun the robot around. The IMU yaw is stable (never
+                // flips); zeroing it at entry (robot facing the table) makes heading start at 0 ==
+                // training heading_w==0, then track real yaw changes drift-free over a short rally.
+                {
+                    auto& q = env->robot->data.root_quat_w;        // Eigen::Quaternionf (w,x,y,z)
+                    float imu_yaw = std::atan2(2.f * (q.w() * q.z() + q.x() * q.y()),
+                                               1.f - 2.f * (q.y() * q.y() + q.z() * q.z()));
+                    if (!yaw0_set_) { yaw0_ = imu_yaw; yaw0_set_ = true; }
+                    float d = imu_yaw - yaw0_;
+                    env->tt_heading = std::atan2(std::sin(d), std::cos(d));  // wrap to [-pi, pi]
+                }
                 auto obs = env->observation_manager->compute();    // uses tt_ball_pos + prev-frame tt_ball_prediction
                 auto action = env->alg->act(obs);
                 env->action_manager->process_action(action);
@@ -230,6 +244,8 @@ private:
     bool policy_thread_running = false;
     int engage_frames_ = 0;                  // frames since ENGAGE; predictor warm-up gate
     static constexpr int PRED_WARMUP = 5;    // = TTPredictor history_len; hold HOME until filled
+    float yaw0_ = 0.f;                        // IMU yaw captured at TableTennis entry (heading zero ref)
+    bool yaw0_set_ = false;                   // re-captured each entry so heading starts at 0 facing table
 };
 
 REGISTER_FSM(State_TableTennis)
