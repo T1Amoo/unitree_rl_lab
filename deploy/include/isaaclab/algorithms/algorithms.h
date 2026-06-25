@@ -39,7 +39,12 @@ public:
 
         for (size_t i = 0; i < session->GetInputCount(); ++i) {
             Ort::TypeInfo input_type = session->GetInputTypeInfo(i);
-            input_shapes.push_back(input_type.GetTensorTypeAndShapeInfo().GetShape());
+            auto shape = input_type.GetTensorTypeAndShapeInfo().GetShape();
+            // Some exports leave a dynamic batch axis (-1). Ort cannot create a
+            // tensor with a negative dim ("negative value in shape"); pin any
+            // dynamic dim to 1. No-op for fixed-shape exports (e.g. TableTennis).
+            for (auto& d : shape) { if (d < 0) d = 1; }
+            input_shapes.push_back(shape);
             auto input_name = session->GetInputNameAllocated(i, allocator);
             input_names.push_back(input_name.release());
         }

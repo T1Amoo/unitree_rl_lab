@@ -64,6 +64,19 @@ public:
         lowcmd->unlockAndPublish();
     }
 
+    // Policy-order -> SDK motor-index map. Read from config.yaml top-level
+    // "joint_ids_map" if present (e.g. G1 23-DoF maps its 23 contiguous policy
+    // joints onto the sparse 29-DoF SDK motor enum: arms at 15-19 / 22-26).
+    // Absent -> identity, so robots that don't set it are unaffected.
+    static std::vector<int> joint_id_map(size_t n)
+    {
+        if(param::config["joint_ids_map"])
+            return param::config["joint_ids_map"].as<std::vector<int>>();
+        std::vector<int> id(n);
+        for(size_t i = 0; i < n; ++i) id[i] = (int)i;
+        return id;
+    }
+
     static std::unique_ptr<LowCmd_t> lowcmd;
     static std::shared_ptr<LowState_t> lowstate;
     static std::shared_ptr<Keyboard> keyboard;

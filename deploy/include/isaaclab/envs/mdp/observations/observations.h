@@ -133,6 +133,16 @@ REGISTER_OBSERVATION(gait_phase)
     std::vector<float> obs(2);
     obs[0] = std::sin(env->global_phase * 2 * M_PI);
     obs[1] = std::cos(env->global_phase * 2 * M_PI);
+
+    // v4: gate the gait clock to ZERO when there is ~no velocity command (matches training
+    // legged_env.py: clock *= norm(command)>0.1) so the policy stands still at idle instead of
+    // marching in place. Phase still advances; only the obs output is zeroed.
+    auto & joystick = env->robot->data.joystick;
+    const auto cmd_cfg = env->cfg["commands"]["base_velocity"]["ranges"];
+    float vx = std::clamp(joystick->ly(),  cmd_cfg["lin_vel_x"][0].as<float>(), cmd_cfg["lin_vel_x"][1].as<float>());
+    float vy = std::clamp(-joystick->lx(), cmd_cfg["lin_vel_y"][0].as<float>(), cmd_cfg["lin_vel_y"][1].as<float>());
+    float wz = std::clamp(-joystick->rx(), cmd_cfg["ang_vel_z"][0].as<float>(), cmd_cfg["ang_vel_z"][1].as<float>());
+    if (std::sqrt(vx*vx + vy*vy + wz*wz) < 0.1f) { obs[0] = 0.0f; obs[1] = 0.0f; }
     return obs;
 }
 

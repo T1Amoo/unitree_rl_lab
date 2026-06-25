@@ -1,13 +1,50 @@
 """Publishes ball + base positions as ROS2 PoseStamped, mirroring the real
-Nokov mocap interface. Frame = table frame (table at world origin in the MJCF),
-so values are world ball/pelvis positions straight from mjData.
+VRPN mocap interface (topic names, BEST_EFFORT QoS, and the room frame M).
+mjData positions are in training-world W; we emit p_M = p_W - input_frame.origin
+so the C++ deploy's p_W = R*p_M + origin reconstructs W identically -> the same
+config.yaml drives both sim2sim and sim2real. See the block comment below.
 """
 import os
 import random
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import PoseStamped
+
+# ---------------------------------------------------------------------------
+# Make the sim mocap output identical to the real VRPN mocap so ONE config.yaml
+# serves both sim2sim and sim2real:
+#   - topic names match config.yaml TableTennis.ros (vrpn rigid-body topics)
+#   - BEST_EFFORT QoS (qos_profile_sensor_data) matches the real VRPN publisher
+#     and the C++ subscriber (SensorDataQoS).
+#   - frame: the real mocap reports in its room frame M (origin at the table-top
+#     center); the C++ maps p_W = R*p_M + origin_in_training_world. mjData gives
+#     positions already in training-world W, so to emit M we send p_M = p_W -
+#     origin (rotation is identity for this table-aligned setup). The controller
+#     adds origin back and recovers the exact sim-W values -> sim2sim is a net
+#     pass-through, AND the same origin=[0,0,0.76] real calibration applies.
+#     The (0,0,0) no-ball sentinel becomes (0,0,-origin_z) on the wire and maps
+#     back to (0,0,0) in W (norm < 1e-6 -> C++ have_ball=false), so it survives.
+# ---------------------------------------------------------------------------
+BALL_TOPIC = "/vrpn_mocap/U_Tracker0/pose"
+BASE_TOPIC = "/vrpn_mocap/g1/pose"
+
+
+def _load_origin():
+    """Read TableTennis.input_frame.origin_in_training_world from config.yaml so
+    the publisher and the C++ deploy share a single source of truth. Falls back
+    to the calibrated table-top height if the file/key is missing."""
+    import yaml
+    cfg_path = os.path.join(os.path.dirname(__file__), "..", "config", "config.yaml")
+    try:
+        with open(cfg_path) as f:
+            cfg = yaml.safe_load(f)
+        o = cfg["FSM"]["TableTennis"]["input_frame"]["origin_in_training_world"]
+        return [float(o[0]), float(o[1]), float(o[2])]
+    except Exception as e:  # noqa: BLE001
+        print(f"[ros_publish] could not read input_frame origin ({e}); using [0,0,0.76]", flush=True)
+        return [0.0, 0.0, 0.76]
 
 # ---------------------------------------------------------------------------
 # Optional mocap fault injection — OFF by default.
@@ -56,8 +93,17 @@ def _base_dropped():
 class MocapPublisher(Node):
     def __init__(self):
         super().__init__("tt_mocap_publisher")
-        self.ball_pub = self.create_publisher(PoseStamped, "/mocap/ball/pose", 10)
-        self.base_pub = self.create_publisher(PoseStamped, "/mocap/base/pose", 10)
+        # BEST_EFFORT keep_last(10) — matches real VRPN + the C++ SensorDataQoS sub.
+        self.ball_pub = self.create_publisher(PoseStamped, BALL_TOPIC, qos_profile_sensor_data)
+        self.base_pub = self.create_publisher(PoseStamped, BASE_TOPIC, qos_profile_sensor_data)
+        # origin to subtract so we emit in the real mocap room frame M (see header).
+        self._origin = _load_origin()
+        print(f"[ros_publish] ball={BALL_TOPIC} base={BASE_TOPIC} "
+              f"frame_origin_subtracted={self._origin} QoS=BEST_EFFORT", flush=True)
+
+    def _to_M(self, pos):
+        """W -> M: subtract origin (rotation is identity for this setup)."""
+        return [pos[0] - self._origin[0], pos[1] - self._origin[1], pos[2] - self._origin[2]]
 
     def _msg(self, pos, quat=(1.0, 0.0, 0.0, 0.0)):
         m = PoseStamped()
@@ -75,6 +121,6 @@ class MocapPublisher(Node):
     def publish(self, ball_pos, base_pos, base_quat):
         bp = _ball_fault(list(ball_pos))
         if bp is not None:
-            self.ball_pub.publish(self._msg(bp))
+            self.ball_pub.publish(self._msg(self._to_M(bp)))
         if not _base_dropped():
-            self.base_pub.publish(self._msg(base_pos, base_quat))
+            self.base_pub.publish(self._msg(self._to_M(list(base_pos)), base_quat))

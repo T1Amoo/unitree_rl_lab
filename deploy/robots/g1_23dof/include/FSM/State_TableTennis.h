@@ -79,6 +79,29 @@ public:
             for (int i = 0; i < 23; ++i) traj_log_ << ",act" << i;
             traj_log_ << "\n";
         }
+        // DIAG (stage 1): RAW network action, pre scale/offset/clip. The commanded
+        // target = scale*raw+offset; for ankle_roll (offset 0, scale 0.25) target =
+        // 0.25*raw. Lets us see how far past the clip limit the policy is pushing.
+        raw_log_.open("/tmp/tt_raw.csv", std::ios::out | std::ios::trunc);
+        if (raw_log_.is_open()) {
+            raw_log_ << "t";
+            for (int i = 0; i < 23; ++i) raw_log_ << ",raw" << i;
+            raw_log_ << "\n";
+        }
+        // DIAG (stage 1+): NEWEST obs frame (last 87 of the 435 history vector;
+        // buffer is oldest..newest so newest = [348:435]). Layout per frame:
+        // ang_vel[0:3] proj_grav[3:6] joint_pos_rel[6:29] joint_vel_rel[29:52]
+        // last_action[52:75] ball_perception[75:81] ball_pred[81:84] rel_xy[84:86] heading[86].
+        // Lets us diff real obs vs the sim ref.npz per-term arrays.
+        obs_log_.open("/tmp/tt_obs.csv", std::ios::out | std::ios::trunc);
+        if (obs_log_.is_open()) {
+            obs_log_ << "t";
+            for (int i = 0; i < 87; ++i) obs_log_ << ",o" << i;
+            // raw mocap ball (W) + robot_pos (W) + gating flags, to see the actual
+            // ball tracking alongside the (gated) obs-frame ball terms.
+            obs_log_ << ",bx,by,bz,rx,ry,rz,have_ball,engaged";
+            obs_log_ << "\n";
+        }
         policy_thread_running = true;
         policy_thread = std::thread([this] {
             using clock = std::chrono::high_resolution_clock;
@@ -101,7 +124,7 @@ public:
                 PTOutput s = tracker_.output();
 
                 // OBS ball-slot gating (match TRAINING): training gates the actor's perception
-                // ball slot [0:3] to the FIXED home sentinel (-1.6,-0.55,0.885) whenever there is
+                // ball slot [0:3] to the FIXED home sentinel (-2.0,-0.55,0.885) whenever there is
                 // no valid live ball (mask_invalid), and feeds the RAW ball only while a ball is
                 // live. A PRIOR deploy build instead held a BASE-RELATIVE ready point when idle
                 // (out_.prediction_hold, anchored to the moving base) -> self-referential drift ->
@@ -111,7 +134,7 @@ public:
                 // and the serve transition match training exactly. robot slot stays raw (training
                 // leaves [3:6] untouched).
                 env->tt_ball_pos  = s.engaged ? ball
-                                              : Eigen::Vector3f(-1.6f, -0.55f, 0.885f);  // home sentinel when idle
+                                              : Eigen::Vector3f(-2.0f, -0.55f, 0.885f);  // home sentinel when idle (v7: hit_plane_x=-2.0; was -1.6 for v5)
                 env->tt_robot_pos = rpos;                          // raw base
                 auto obs = env->observation_manager->compute();    // uses tt_ball_pos + prev-frame tt_ball_prediction
                 auto action = env->alg->act(obs);
@@ -126,7 +149,7 @@ public:
                     if (++engage_frames_ >= PRED_WARMUP) {
                         env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);  // live prediction
                     } else {
-                        constexpr float HOME_X = -1.6f, HOME_Y = 0.0f;
+                        constexpr float HOME_X = -2.0f, HOME_Y = 0.0f;
                         env->tt_ball_prediction = Eigen::Vector3f(HOME_X, HOME_Y - 0.55f, 0.885f);
                     }
                 } else {
@@ -137,10 +160,10 @@ public:
                     // CONSTANT (target always 0.1 m behind) -> no restoring force -> over a
                     // long no-ball gap the robot slowly drifts backward chasing it and falls.
                     // A FIXED home anchor makes rel_target restore toward home -> stable idle.
-                    // (Equivalent to training when the robot is at home x=-1.6; adds restoring.)
+                    // (Equivalent to training when the robot is at home x=-2.0; adds restoring.)
                     predictor_->clear();
                     engage_frames_ = 0;
-                    constexpr float HOME_X = -1.6f, HOME_Y = 0.0f;   // robot's trained standing base
+                    constexpr float HOME_X = -2.0f, HOME_Y = 0.0f;   // robot's trained standing base (v7 hit_plane_x=-2.0)
                     env->tt_ball_prediction = Eigen::Vector3f(HOME_X, HOME_Y - 0.55f, 0.885f);
                 }
 
@@ -157,6 +180,24 @@ public:
                     for (int i = 0; i < (int)q.size(); ++i) traj_log_ << "," << q[i];
                     traj_log_ << "\n";
                     if (t % 50 == 0) traj_log_.flush();
+                }
+                if (raw_log_.is_open()) {
+                    raw_log_ << t;
+                    for (size_t i = 0; i < action.size(); ++i) raw_log_ << "," << action[i];
+                    raw_log_ << "\n";
+                    if (t % 50 == 0) raw_log_.flush();
+                }
+                if (obs_log_.is_open()) {
+                    const auto & ov = obs["obs"];
+                    if (ov.size() >= 435) {
+                        obs_log_ << t;
+                        for (int i = 348; i < 435; ++i) obs_log_ << "," << ov[i];
+                        obs_log_ << "," << ball[0] << "," << ball[1] << "," << ball[2]
+                                 << "," << rpos[0] << "," << rpos[1] << "," << rpos[2]
+                                 << "," << (have_ball ? 1 : 0) << "," << (s.engaged ? 1 : 0);
+                        obs_log_ << "\n";
+                        if (t % 50 == 0) obs_log_.flush();
+                    }
                 }
             }
         });
@@ -183,6 +224,8 @@ private:
     rclcpp::Node::SharedPtr ros_node_;
     PerceptionTracker tracker_;
     std::ofstream traj_log_;   // DIAG: per-step commanded vs actual joint angles
+    std::ofstream raw_log_;    // DIAG (stage 1): per-step RAW network action (pre scale/offset/clip)
+    std::ofstream obs_log_;    // DIAG (stage 1+): per-step NEWEST obs frame (87) for sim-vs-real diff
     std::thread policy_thread;
     bool policy_thread_running = false;
     int engage_frames_ = 0;                  // frames since ENGAGE; predictor warm-up gate

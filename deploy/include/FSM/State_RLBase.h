@@ -14,13 +14,19 @@ public:
     
     void enter()
     {
-        // set gain
-        for (int i = 0; i < env->robot->data.joint_stiffness.size(); ++i)
+        // set gain — map policy-order gains onto SDK motor indices via
+        // joint_ids_map (like State_TableTennis::enter). Writing motor_cmd[i]
+        // with the raw policy index mis-assigns kp/kd on the sparse 23-DoF SDK
+        // enum (arms 15-19/22-26 land on the wrong motors). Correct for 29-DoF
+        // too, whose map covers 0..28.
+        auto & jmap = env->robot->data.joint_ids_map;
+        for (size_t i = 0; i < jmap.size(); ++i)
         {
-            lowcmd->msg_.motor_cmd()[i].kp() = env->robot->data.joint_stiffness[i];
-            lowcmd->msg_.motor_cmd()[i].kd() = env->robot->data.joint_damping[i];
-            lowcmd->msg_.motor_cmd()[i].dq() = 0;
-            lowcmd->msg_.motor_cmd()[i].tau() = 0;
+            auto & m = lowcmd->msg_.motor_cmd()[jmap[i]];
+            m.kp() = env->robot->data.joint_stiffness[i];
+            m.kd() = env->robot->data.joint_damping[i];
+            m.dq() = 0;
+            m.tau() = 0;
         }
 
         env->robot->update();

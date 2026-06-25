@@ -7,7 +7,7 @@
 
 step_dt: 0.02
 
-# joint_ids_map: identity placeholder.
+# joint_ids_map: policy order -> sparse G1 29-DoF SDK motor indices (arms 15-19/22-26).
 # Policy joint order = obs_joint_ids (23 DoF subset of G1).
 # Real SDK mapping (Project B) fills non-identity values here.
 joint_ids_map: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
@@ -27,7 +27,10 @@ actions:
     # action_scale=0.25 from training config; output = scale*action_net + offset.
     scale: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
     offset: [-0.312, 0.0, 0.0, 0.669, -0.363, 0.0, -0.312, 0.0, 0.0, 0.669, -0.363, 0.0, 0.0, 0.2, 0.2, 0.0, 0.6, 0.0, 0.2, -0.2, 0.0, 0.6, 0.0]
-    clip: null
+    # SAFETY guardrail: clamp commanded joint target (scale*action+offset) to URDF
+    # joint limits, policy order. CONFIRMED essential 2026-06-18: with clip off,
+    # no-ball R_ank_roll runs away (2.5->4.4e7 rad in ~15s = yesterday's overload).
+    clip: [[-2.5307,2.8798],[-0.5236,2.9671],[-2.7576,2.7576],[-0.0873,2.8798],[-0.8727,0.5236],[-0.2618,0.2618],[-2.5307,2.8798],[-2.9671,0.5236],[-2.7576,2.7576],[-0.0873,2.8798],[-0.8727,0.5236],[-0.2618,0.2618],[-2.618,2.618],[-3.0892,2.6704],[-1.5882,2.2515],[-2.618,2.618],[-1.0472,2.0944],[-1.9722,1.9722],[-3.0892,2.6704],[-2.2515,1.5882],[-2.618,2.618],[-1.0472,2.0944],[-1.9722,1.9722]]
     joint_ids: null
 
 observations:

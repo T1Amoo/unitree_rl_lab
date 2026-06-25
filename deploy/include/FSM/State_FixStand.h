@@ -15,6 +15,9 @@ public:
         ts_ = param::config["FSM"]["FixStand"]["ts"].as<std::vector<float>>();
         qs_ = param::config["FSM"]["FixStand"]["qs"].as<std::vector<std::vector<float>>>();
         assert(ts_.size() == qs_.size());
+        // FixStand kp/kd/qs are in POLICY joint order; map to SDK motor indices
+        // (identity unless config sets joint_ids_map, e.g. G1 23-DoF sparse arms).
+        jmap_ = joint_id_map(qs_.back().size());
     }
 
     void enter()
@@ -24,7 +27,7 @@ public:
         static auto kd = param::config["FSM"]["FixStand"]["kd"].as<std::vector<float>>();
         for(int i(0); i < kp.size(); ++i)
         {
-            auto & motor = lowcmd->msg_.motor_cmd()[i];
+            auto & motor = lowcmd->msg_.motor_cmd()[jmap_[i]];
             motor.kp() = kp[i];
             motor.kd() = kd[i];
             motor.dq() = motor.tau() = 0;
@@ -34,7 +37,7 @@ public:
         // set initial position
         std::vector<float> q0;
         for(int i(0); i < kp.size(); ++i) {
-            q0.push_back(lowcmd->msg_.motor_cmd()[i].q());
+            q0.push_back(lowcmd->msg_.motor_cmd()[jmap_[i]].q());
         }
         qs_[0] = q0;
         t0_ = (double)unitree::common::GetCurrentTimeMillisecond() * 1e-3;
@@ -44,9 +47,9 @@ public:
     {
         float t = (double)unitree::common::GetCurrentTimeMillisecond() * 1e-3 - t0_;
         auto q = linear_interpolate(t, ts_, qs_);
-        
+
         for(int i(0); i < q.size(); ++i) {
-            lowcmd->msg_.motor_cmd()[i].q() = q[i];
+            lowcmd->msg_.motor_cmd()[jmap_[i]].q() = q[i];
         }
     }
 
@@ -54,6 +57,7 @@ private:
     double t0_;
     std::vector<float> ts_;
     std::vector<std::vector<float>> qs_;
+    std::vector<int> jmap_;
 };
 
 REGISTER_FSM(State_FixStand)

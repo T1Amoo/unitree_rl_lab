@@ -220,7 +220,14 @@ ros2 topic echo --once /vrpn_mocap/<球>/pose       # 2. 把球放已知点逐�
 cd unitree_rl_lab/deploy/robots/g1_23dof
 bash sim2sim/build_deploy.sh                       # 若改过 domain
 LD_LIBRARY_PATH=$CONDA_PREFIX/lib:/usr/local/lib \
-  ./build/g1_ctrl --network eth0
+  ./build/g1_ctrl --network enx6c1ff76cb7d7
+
+
+source /opt/ros/humble/setup.bash
+ros2 launch vrpn_mocap client.launch.yaml server:=10.1.1.198 port:=3883
+
+cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/g1_23dof
+bash sim2sim/run_deploy_real.sh
 ```
 
 ### 6e. 真机控制(Unitree 手柄)

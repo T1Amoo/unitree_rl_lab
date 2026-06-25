@@ -9,17 +9,24 @@ import numpy as np
 import os
 
 # Scene geometry: table top z=0.76, x in [-1.37, 1.37], net at x=0 (top z=0.915);
-# robot pelvis at x=-1.6 facing +x -> robot half is x in [-1.37, 0].
+# robot pelvis at x=-2.0 facing +x (v7 station) -> robot half is x in [-1.37, 0].
 # Launch from ball default (1.35, 0, 1.03); ball center bounces at z=0.78 (top+radius).
 SERVE_LAUNCH = (1.35, 0.0, 1.03)
 G = 9.81
 Z_BOUNCE = 0.78
-# Target-bounce-point ranges. EASY (like yesterday): centered, mid-court, narrow.
-# (Policy v3 was trained on the full deep+wide distribution, so these easy serves
-#  are a subset it handles comfortably. Widen BOUNCE_X / BOUNCE_Y for harder play.)
-BOUNCE_X = (-0.65, -0.45)   # mid court, narrow (bounce ~x=-0.55)
-BOUNCE_VZ = (1.6, 1.8)     # gentle arc
+# v7-MATCHED serve (2026-06-23): robot moved -1.6 -> -2.0, so the ball must bounce DEEP near
+# the table edge (-1.37) and fly FLAT+FAST to carry to the robot at -2.0 at racket-ready height
+# (~z1.0). Mirrors g1_tt_v7 training easy serve: bounce_x(-1.37,-1.31) vz(1.7,2.0). (Old mid-court
+# bounce -0.55 was for the -1.6 station and falls short at -2.0.)
+BOUNCE_X = (-1.37, -1.31)   # deep, near robot-side table edge (v7 easy)
+BOUNCE_VZ = (1.7, 2.0)     # flat+fast -> carries to -2.0 at z~1.0
 BOUNCE_Y = (-0.50, 0.50)   # WIDE: full lateral spread (matches training serve_y_start=0.5) -> left/right movement
+# TT_SERVE_MID=1: easy MID-table serve for VIEWING — bounces mid-court so the post-bounce arc to
+# the robot at -2.0 is longer and easier to predict (the deep v7 serve bounces right in front of
+# the robot, little time to react). mujoco has no air drag so the higher arc still carries to -2.0.
+if os.environ.get("TT_SERVE_MID", "0") == "1":
+    BOUNCE_X = (-0.95, -0.75)
+
 
 
 class Serve:

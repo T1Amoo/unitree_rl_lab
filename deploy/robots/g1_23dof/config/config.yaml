@@ -1,15 +1,22 @@
+# Policy joint order (legs12, waist_yaw, Larm5, Rarm5) -> G1 SDK motor indices.
+# The real G1 SDK is the sparse 29-DoF enum (waist roll/pitch=13/14, left arm
+# 15-19, right arm 22-26), so identity would scramble the arms onto the wrong
+# motors. FixStand/Passive read this; keep it identical to each policy's
+# deploy.yaml joint_ids_map (used by the TableTennis read/write path).
+joint_ids_map: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+
 FSM:
   _: # enabled fsms
     Passive:
       id: 1
     FixStand:
       id: 2
-    # Velocity disabled for sim2sim: its policy dir (logs/rsl_rl/unitree_g1_23dof_velocity)
-    # is absent on this machine and the FSM ctor loads every enabled state at startup.
-    # Re-enable when a velocity policy is present.
-    # Velocity:
-    #   id: 3
-    #   type: RLBase
+    # Velocity RE-ENABLED 2026-06-23 with OUR OWN v2 policy (g1_locomotion_v2/model_24998,
+    # 25k iters, deploy-compatible obs: no base_lin_vel in actor, action_delay on). Replaces
+    # the ported HumanoidProject policy that was unstable. sim2sim 'v' key to switch.
+    Velocity:
+      id: 3
+      type: RLBase
     TableTennis:
       id: 4
       type: TableTennis
@@ -34,7 +41,7 @@ FSM:
     transitions:
       Passive: LT + B.on_pressed
       Velocity: RB + X.on_pressed
-      TableTennis: RB + Y.on_pressed
+      TableTennis: RB + Y.on_pressed   # TEMP re-added for real deploy (v3 Velocity buggy: crouch/idle-step). Remove again to restore forced FixStand->Velocity->TableTennis once v4 velocity is trained.
     # 23-wide, POLICY joint order (legs12, waist_yaw, Larm5, Rarm5). Target pose =
     # policy default_joint_pos so FixStand hands off cleanly to TableTennis. (Was a
     # 29-wide G1 array -> arm targets landed on the wrong joints on this 23-DoF robot.)
@@ -65,11 +72,12 @@ FSM:
   Velocity:
     transitions:
       Passive: LT + B.on_pressed
-    policy_dir: ../../../logs/rsl_rl/unitree_g1_23dof_velocity
+      TableTennis: RB + Y.on_pressed
+    policy_dir: config/policy/velocity
   TableTennis:
     transitions:
       Passive: LT + B.on_pressed
-    policy_dir: config/policy/table_tennis/v5
+    policy_dir: config/policy/table_tennis/v8_33000
     # Mocap topic names. Defaults below match the sim2sim publisher (ros_publish.py).
     # On the real robot, point these at your VRPN/Nokov/OptiTrack rigid-body topics,
     # e.g.  ball_topic: /vrpn_mocap/U_Tracker0/pose   (ball rigid body)
@@ -77,8 +85,10 @@ FSM:
     # Both must be geometry_msgs/PoseStamped. The mocap node must use a BEST_EFFORT
     # QoS (the subscriber uses SensorDataQoS keep_last(50)) or no messages arrive.
     ros:
-      ball_topic: /mocap/ball/pose
-      base_topic: /mocap/base/pose
+      # --- BALL ENABLED 2026-06-23 for trajectory bring-up of v7_29999 ---
+      # No-ball idle test: ball_topic: /tt/ball_DISABLED
+      ball_topic: /vrpn_mocap/U_Tracker0/pose
+      base_topic: /vrpn_mocap/g1/pose
     # Mocap-room frame M  ->  training world frame W:  p_W = R_WM * p_M + origin.
     # The sim publishes already in W, so the defaults (identity rotation, zero
     # origin) are a pass-through and leave sim2sim unchanged.
@@ -97,5 +107,11 @@ FSM:
     #   - If the mocap axes are NOT aligned to W, set rotation_wxyz_to_training to the
     #       quaternion (w,x,y,z) rotating a mocap vector into W.
     input_frame:
-      origin_in_training_world: [0.0, 0.0, 0.0]
+      # Calibrated 2026-06-17. Mocap room frame M: origin at the TABLE-TOP CENTER,
+      # +z up, robot on the -x side (axes already aligned with training W). Training
+      # W: origin at the table center on the FLOOR, table top at z=0.76. M and W
+      # share x,y (both at table center) and differ only by the table height in z,
+      # so the transform is a pure +0.76 z shift, identity rotation.
+      #   p_W = p_M + (0, 0, 0.76)
+      origin_in_training_world: [0.0, 0.0, 0.76]
       rotation_wxyz_to_training: [1.0, 0.0, 0.0, 0.0]

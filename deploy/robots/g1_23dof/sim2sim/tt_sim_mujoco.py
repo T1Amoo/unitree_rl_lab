@@ -45,6 +45,7 @@ BAND_Z0 = 1.5          # band anchor height: hangs feet ~0.6 m off the ground
 CHORDS = {
     glfw.KEY_F: (0x20, 0x10),  # LT + up -> FixStand
     glfw.KEY_G: (0x01, 0x08),  # RB + Y  -> TableTennis
+    glfw.KEY_V: (0x01, 0x04),  # RB + X  -> Velocity (stand/walk)
     glfw.KEY_P: (0x20, 0x02),  # LT + B  -> Passive
 }
 
@@ -65,6 +66,7 @@ S = {
     "quit": False,
     "b2": 0, "b3": 0, "seq": -1,      # two-phase chord: modifier alone, then +edge, then release
     "band_enable": True, "band_z": BAND_Z0,
+    "vx": 0.0, "vy": 0.0, "wz": 0.0,  # velocity command (WASD/QE drive the joystick sticks)
 }
 CHORD_PRE, CHORD_BOTH = 12, 30        # frames: modifier-only, then modifier+edge
 
@@ -82,6 +84,17 @@ def key_callback(keycode):
         S["band_z"] += 0.1; print(f"[tt_sim] band raise z={S['band_z']:.2f}", flush=True)
     elif keycode == glfw.KEY_9:
         S["band_enable"] = not S["band_enable"]; print(f"[tt_sim] band enable={S['band_enable']}", flush=True)
+    # WASD velocity command (Velocity policy). W/S=fwd/back, A/D=left/right, Space=stop.
+    elif keycode == glfw.KEY_W:
+        S["vx"] = 0.5;  print(f"[tt_sim] cmd vx={S['vx']:.2f} vy={S['vy']:.2f}", flush=True)
+    elif keycode == glfw.KEY_S:
+        S["vx"] = -0.3; print(f"[tt_sim] cmd vx={S['vx']:.2f} vy={S['vy']:.2f}", flush=True)
+    elif keycode == glfw.KEY_A:
+        S["vy"] = 0.3;  print(f"[tt_sim] cmd vx={S['vx']:.2f} vy={S['vy']:.2f}", flush=True)
+    elif keycode == glfw.KEY_D:
+        S["vy"] = -0.3; print(f"[tt_sim] cmd vx={S['vx']:.2f} vy={S['vy']:.2f}", flush=True)
+    elif keycode == glfw.KEY_SPACE:
+        S["vx"] = S["vy"] = S["wz"] = 0.0; print("[tt_sim] cmd STOP (0,0,0)", flush=True)
 
 
 locker = threading.Lock()
@@ -125,11 +138,27 @@ def apply_chord(low_state):
         S["seq"] = -1
 
 
+def set_stick(low_state):
+    # Map WASD command -> joystick sticks the C++ Velocity obs reads (observations.h:
+    # vx=ly, vy=-lx, wz=-rx). wireless_remote float offsets: lx@4, rx@8, ly@20 (LE f32).
+    lx = -S["vy"]; rx = -S["wz"]; ly = S["vx"]
+    for i, b in enumerate(np.float32(lx).tobytes()):  low_state.wireless_remote[4 + i]  = b
+    for i, b in enumerate(np.float32(rx).tobytes()):  low_state.wireless_remote[8 + i]  = b
+    for i, b in enumerate(np.float32(ly).tobytes()):  low_state.wireless_remote[20 + i] = b
+
+
 def SimulationThread():
     ChannelFactoryInitialize(config.DOMAIN_ID, config.INTERFACE)
     bridge = UnitreeSdk2Bridge(mj_model, mj_data)  # auto-publishes LowState, applies LowCmd PD
-    rclpy.init()
-    pub = MocapPublisher()
+    # TT_NO_MOCAP=1: skip the rclpy mocap publisher. It cannot coexist with the
+    # Unitree SDK's in-process CycloneDDS (rclpy node creation fails: "rmw handle
+    # is invalid"). Proprio (LowState/LowCmd) still flows via the Unitree DDS, so
+    # the policy runs — only the ROS base/ball mocap is absent (robot_pos -> 0).
+    NO_MOCAP = os.environ.get("TT_NO_MOCAP", "0") == "1"
+    pub = None
+    if not NO_MOCAP:
+        rclpy.init()
+        pub = MocapPublisher()
     serve = Serve(interval_steps=150)
     ctrl_step = 0
     cnt = 0
@@ -141,7 +170,19 @@ def SimulationThread():
     # injection used to test idle). Default 125 ctrl steps = 2.5 s -> 50/50 ball/no-ball, matching
     # TT_SERVE_PERIOD=5. Set TT_NOBALL_STEPS=0 for the old always-ball behavior.
     NOBALL_STEPS = int(os.environ.get("TT_NOBALL_STEPS", "125"))
-    noball_now = False
+    # TT_NO_SERVE=1: never serve a ball at all -> the ball stays parked and the
+    # publisher emits the (0,0,0) no-ball sentinel continuously (a "non-existent
+    # ball trajectory"). Use to validate pure no-ball standing stability before
+    # throwing any ball, in sim and (with the same config) on the real robot.
+    NO_SERVE = os.environ.get("TT_NO_SERVE", "0") == "1"
+    noball_now = NO_SERVE
+    # TT_AUTO=1: headless test driver — auto-issue the FixStand chord, then the
+    # TableTennis chord, on a timer (no keyboard needed). Lets sim2sim run from a
+    # script so cmd/act can be checked for the same divergence seen on the robot.
+    AUTO = os.environ.get("TT_AUTO", "0") == "1"
+    # TT_AUTO_VEL=1: in AUTO mode, the second chord enters Velocity (stand/walk)
+    # instead of TableTennis — lets sim2sim auto-test the velocity policy headless.
+    AUTO_VEL = os.environ.get("TT_AUTO_VEL", "0") == "1"
     # Perception BLACKOUT test: the ball keeps FLYING (physics untouched), but its mocap is DROPPED
     # for TT_BLACKOUT_LEN ctrl steps starting TT_BLACKOUT_START after each serve -> the deploy loses
     # sight of it mid-flight and re-detects it later at its MOVED (flown-on) position (NOT where it
@@ -150,7 +191,7 @@ def SimulationThread():
     BLACKOUT_LEN = int(os.environ.get("TT_BLACKOUT_LEN", "0"))
     last_reset = -100000
     RESET_COOLDOWN = 750   # >=1.5 s between auto-resets so recovery (p/f) isn't fought
-    print("[tt_sim] focus the MuJoCo window, then: f=FixStand g=TableTennis p=Passive | 8=lower 7=raise 9=release | q=quit", flush=True)
+    print("[tt_sim] focus the MuJoCo window, then: f=FixStand v=Velocity g=TableTennis p=Passive | 8=lower 7=raise 9=release | q=quit", flush=True)
 
     while viewer.is_running() and not S["quit"]:
         step_start = time.perf_counter()
@@ -168,6 +209,51 @@ def SimulationThread():
 
         mujoco.mj_step(mj_model, mj_data)
         apply_chord(bridge.low_state)
+        set_stick(bridge.low_state)
+        # TT_JOINT_DIAG=1: per-50-step joint health log (ankle divergence watch). pos/vel per
+        # joint + global max|qvel|. ankle_roll limit ~+/-0.262; runaway shows as big qvel/pinned pos.
+        if os.environ.get("TT_JOINT_DIAG", "0") == "1" and cnt % 50 == 0:
+            try:
+                _qv = mj_data.qvel.copy(); _qv[ball_vadr:ball_vadr + 6] = 0.0  # exclude the flying ball
+                _maxv = float(np.abs(_qv).max())
+                def _jpv(nm):
+                    _j = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_JOINT, nm)
+                    if _j < 0:
+                        return (float("nan"), float("nan"))
+                    return (float(mj_data.qpos[mj_model.jnt_qposadr[_j]]), float(mj_data.qvel[mj_model.jnt_dofadr[_j]]))
+                _arl, _arr = _jpv("left_ankle_roll_joint"), _jpv("right_ankle_roll_joint")
+                _apl, _apr = _jpv("left_ankle_pitch_joint"), _jpv("right_ankle_pitch_joint")
+                print(f"[JDIAG] cnt={cnt} maxqvel={_maxv:.2f} pelvisZ={float(mj_data.qpos[pelvis_qadr+2]):.3f} | "
+                      f"ankleRoll L={_arl[0]:+.3f}({_arl[1]:+.2f}) R={_arr[0]:+.3f}({_arr[1]:+.2f}) | "
+                      f"anklePitch L={_apl[0]:+.3f}({_apl[1]:+.2f}) R={_apr[0]:+.3f}({_apr[1]:+.2f})", flush=True)
+            except Exception:
+                pass
+
+        # headless auto-FSM: FixStand at ~3 s, then TableTennis at ~8 s (gives the
+        # controller time to connect). Only fires when no chord is mid-sequence.
+        if AUTO:
+            # After FixStand, ramp the band DOWN so the feet plant on the ground
+            # (BAND_Z0=1.5 hangs them ~0.6 m up -> torso anchor 0.90 grounds them).
+            # Only enter TableTennis once grounded, so the policy sees a real
+            # standing pose, not a dangling one.
+            if S.get("did_fix") and S["band_z"] > 0.90:
+                S["band_z"] = max(0.90, S["band_z"] - 0.001)
+            if cnt % 500 == 0:
+                print("[AUTO] cnt=%d band_z=%.2f pelvis_z=%.3f" % (
+                    cnt, S["band_z"], float(mj_data.qpos[pelvis_qadr + 2])), flush=True)
+            if S["seq"] < 0:
+                if cnt >= 1500 and not S.get("did_fix"):
+                    S["b2"], S["b3"] = CHORDS[glfw.KEY_F]; S["seq"] = 0; S["did_fix"] = True
+                    print("[AUTO] -> FixStand", flush=True)
+                elif S.get("did_fix") and cnt >= 6000 and S["band_z"] <= 0.91 and not S.get("did_tt"):
+                    _k = glfw.KEY_V if AUTO_VEL else glfw.KEY_G
+                    S["b2"], S["b3"] = CHORDS[_k]; S["seq"] = 0; S["did_tt"] = True
+                    print("[AUTO] -> %s (grounded)" % ("Velocity" if AUTO_VEL else "TableTennis"), flush=True)
+                elif AUTO_VEL and S.get("did_tt") and cnt >= 8000 and not S.get("did_release"):
+                    # free-stand test: drop the band ~2 s after entering Velocity so the
+                    # policy must hold the robot up on its own (no torso anchor).
+                    S["band_enable"] = False; S["did_release"] = True
+                    print("[AUTO] -> band RELEASED (free-stand test)", flush=True)
 
         # auto-reset on fall, with a cooldown so it does not spam-reset (which fights
         # recovery). After a fall: press 'p' (Passive stops the policy, band holds it)
@@ -195,7 +281,13 @@ def SimulationThread():
             # Fixed-cadence serve: one ball every SERVE_INTERVAL ctrl steps (5 s).
             # The ball flies+lands well before 5 s, then rests (robot holds via the
             # invalid-ball gate) until the next serve -> easy to watch one ball at a time.
-            if ball_age >= SERVE_INTERVAL:
+            if NO_SERVE:
+                # never serve: keep the ball parked underground so the mocap
+                # publish sends (0,0,0) -> C++ have_ball=false -> idle, forever.
+                mj_data.qpos[ball_qadr:ball_qadr + 3] = [0.0, 0.0, -50.0]
+                mj_data.qvel[ball_vadr:ball_vadr + 6] = 0.0
+                noball_now = True
+            elif ball_age >= SERVE_INTERVAL:
                 pos, vel = serve.sample()
                 mj_data.qpos[ball_qadr:ball_qadr + 3] = pos
                 mj_data.qpos[ball_qadr + 3:ball_qadr + 7] = [1, 0, 0, 0]
@@ -212,7 +304,7 @@ def SimulationThread():
         # publish mocap FASTER than control (every PUB_DECIM steps) so the deploy
         # always reads a fresh ball pose -> low perception latency (training delay
         # was ~4-10 ms). The deploy's predictor still consumes at its own 50 Hz.
-        if cnt % PUB_DECIM == 0:
+        if pub is not None and cnt % PUB_DECIM == 0:
             blackout_now = (BLACKOUT_LEN > 0 and BLACKOUT_START <= ball_age < BLACKOUT_START + BLACKOUT_LEN)
             ball_xpos = np.zeros(3) if (noball_now or blackout_now) else mj_data.xpos[ball_bid].copy()
             pub.publish(ball_xpos,
@@ -225,8 +317,9 @@ def SimulationThread():
         if dt_left > 0:
             time.sleep(dt_left)
 
-    pub.destroy_node()
-    rclpy.shutdown()
+    if pub is not None:
+        pub.destroy_node()
+        rclpy.shutdown()
 
 
 def PhysicsViewerThread():

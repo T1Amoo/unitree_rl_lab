@@ -38,7 +38,7 @@
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
     <geom name="floor" type="plane" size="0 0 0.05" material="grid" condim="3"/>
-    <body name="pelvis" pos="-1.6 0 0.793">
+    <body name="pelvis" pos="-2.0 0 0.793">
       <inertial pos="0 0 -0.07605" quat="1 0 -0.000399148 0" mass="3.813" diaginertia="0.010549 0.0093089 0.0079184"/>
       <joint name="floating_base_joint" type="free" limited="false" actuatorfrclimited="false"/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.2 0.2 0.2 1" mesh="pelvis"/>
@@ -189,12 +189,13 @@
                        the table-tennis paddle adapter replaces it. Body mass/inertia come from the
                        adapter geoms (mount 0.03 + rod 0.08 + holder 0.05 + blade 0.17 kg). -->
                   <!-- Table-tennis paddle chain, matching training URDF g1_23dof_tt_paddle.urdf:
-                       wrist -> adapter mount -> extension rod (0.16m) -> holder (+90deg about X)
-                       -> paddle blade. Contact disk lands at wrist +X 0.337 (= training paddle_offset). -->
+                       wrist -> adapter mount -> extension rod (0.123m) -> holder (+90deg about X)
+                       -> paddle blade. Contact disk lands at wrist +X 0.30 (= training paddle_offset).
+                       (Extension shortened 0.16->0.123 to match training build_tt_urdf.py; was 0.337.) -->
                   <geom name="tt_mount" type="cylinder" size="0.025 0.006" pos="0.006 0 0" quat="0.70710678 0 0.70710678 0" contype="0" conaffinity="0" group="1" rgba="0.2 0.2 0.2 1" mass="0.03"/>
                   <body name="tt_extension" pos="0.012 0 0">
-                    <geom name="tt_rod" type="cylinder" size="0.018 0.08" pos="0.08 0 0" quat="0.70710678 0 0.70710678 0" contype="1" conaffinity="1" group="1" rgba="0.2 0.2 0.2 1" mass="0.08"/>
-                    <body name="tt_holder" pos="0.16 0 0" quat="0.70710678 0.70710678 0 0">
+                    <geom name="tt_rod" type="cylinder" size="0.018 0.0615" pos="0.0615 0 0" quat="0.70710678 0 0.70710678 0" contype="1" conaffinity="1" group="1" rgba="0.2 0.2 0.2 1" mass="0.08"/>
+                    <body name="tt_holder" pos="0.123 0 0" quat="0.70710678 0.70710678 0 0">
                       <geom name="paddle_visual" type="mesh" mesh="tt_paddle" pos="0 -0.00351 -0.00149" quat="0.70710678 0 0 -0.70710678" contype="0" conaffinity="0" group="1" rgba="0.8 0.1 0.1 1" mass="0.05"/>
                       <geom name="paddle_blade" type="cylinder" size="0.075 0.02" pos="0.165 0 0" quat="1 0 0 0" contype="1" conaffinity="1" rgba="0.8 0.1 0.1 0" mass="0.17"
                             friction="0.6 0.005 0.0001" solref="0.002 1" solimp="0.95 0.99 0.001"/>
