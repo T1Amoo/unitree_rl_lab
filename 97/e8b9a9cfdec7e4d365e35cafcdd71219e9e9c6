@@ -1,0 +1,47 @@
+deploy/robots/g1_23dof/sim2sim/scene/g1_23dof_tt_scene.xml
+  s_6c710e83880694::t_a242fb9fbcdaf4 248-255,257-258
+deploy/robots/g1_23dof/config/config.yaml
+  s_6c710e83880694::t_e03c119834a047 6
+  s_6c710e83880694::t_fe0a8b97248381 80
+deploy/robots/g1_23dof/config/policy/table_tennis/v0/params/deploy.yaml
+  s_6c710e83880694::t_e03c119834a047 13
+deploy/robots/g1_23dof/include/tt_ros_ball_source.h
+  s_6c710e83880694::t_27aa826f7b6cad 67
+  s_6c710e83880694::t_4bc29ea5264a74 14-16
+deploy/robots/g1_23dof/config/policy/table_tennis/v5/params/deploy.yaml
+  s_6c710e83880694::t_e03c119834a047 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v4/params/deploy.yaml
+  s_6c710e83880694::t_e03c119834a047 13
+deploy/robots/g1_23dof/include/tt_observations.h
+  s_6c710e83880694::t_e1f7d75b30e4ac 28-31,34
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_6c710e83880694::t_06d4254f1444d9 113
+  s_6c710e83880694::t_09aa0b615dad8d 140-152
+  s_6c710e83880694::t_83d176880015eb 247-248
+deploy/include/isaaclab/envs/manager_based_rl_env.h
+  s_6c710e83880694::t_1fd79e64853a45 83
+deploy/robots/g1_23dof/sim2sim/tt_sim_mujoco.py
+  s_6c710e83880694::t_983e16a4ad546a 210-216
+deploy/robots/g1_23dof/config/policy/table_tennis/v3/params/deploy.yaml
+  s_6c710e83880694::t_e03c119834a047 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v1/params/deploy.yaml
+  s_6c710e83880694::t_e03c119834a047 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v2/params/deploy.yaml
+  s_6c710e83880694::t_e03c119834a047 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "97e8b9a9cfdec7e4d365e35cafcdd71219e9e9c6",
+  "prompts": {},
+  "sessions": {
+    "s_6c710e83880694": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "447c545e-4e7d-4983-a73e-f42a11850540",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
