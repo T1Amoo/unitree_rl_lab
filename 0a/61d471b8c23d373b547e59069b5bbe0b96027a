@@ -1,0 +1,159 @@
+deploy/robots/g1_23dof/sim2sim/run_sim.sh
+  s_3c3dde3dbdf153::t_862c84d854689e 13-18
+  s_3c3dde3dbdf153::t_2dcc25709fe42d 8-12
+deploy/include/isaaclab/algorithms/algorithms.h
+  s_67291ad3e89daa::t_ecd56ea81d97d4 42-47
+deploy/robots/g1_23dof/sim2sim/run_deploy_real.sh
+  s_3c3dde3dbdf153::t_0f685648596891 1-30
+deploy/robots/g1_23dof/MANUAL.md
+  h_5be2f231776523 223-230
+deploy/robots/g1_23dof/sim2sim/tt_sim_mujoco.py
+  s_67291ad3e89daa::t_555ade689a899c 48
+  s_ee10fa3faf43f2::t_10e4e38083db12 212
+  s_3c3dde3dbdf153::t_ba6fe967f2a1d2 234-248
+  s_ee10fa3faf43f2::t_d1af217cd52355 213-216,219-230
+  s_ee10fa3faf43f2::t_3643b10b24796f 141-149
+  s_ee10fa3faf43f2::t_db9a55683e12b4 249-251
+  s_3c3dde3dbdf153::t_82804d88638459 153-161
+  s_ee10fa3faf43f2::t_6204d0366085ca 87,89,91,93,95
+  s_ee10fa3faf43f2::t_9c45efd55baf71 217-218
+  s_3c3dde3dbdf153::t_d18252520d1964 179-182
+  s_ee10fa3faf43f2::t_097540ed6d1034 183-185
+  s_ee10fa3faf43f2::t_3a596c9318d996 69
+  s_ee10fa3faf43f2::t_792d1cbb57798e 88,90,92,94,96-97
+  s_3c3dde3dbdf153::t_906133b721ca9c 173-178
+  s_3c3dde3dbdf153::t_fab0d9296481c1 232-233
+  s_ee10fa3faf43f2::t_32e1af689cdc41 252-256
+  s_3c3dde3dbdf153::t_a2629c5f672fd8 284-290
+  s_3c3dde3dbdf153::t_2375224291033d 307,320-322
+  s_67291ad3e89daa::t_420e3d7b4530a2 194
+deploy/robots/g1_23dof/config/policy/table_tennis/v3/params/deploy.yaml
+  s_3c3dde3dbdf153::t_834e56f3c9ca10 10
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_67291ad3e89daa::t_7ef5b47e10b1f9 228
+  s_ea843c3b818179::t_76b6ec5bf46afa 137
+  s_ea843c3b818179::t_f68d213f08e9a1 166
+  s_67291ad3e89daa::t_c4cb5c5cb0ebbf 190-194,198-201
+  s_ea843c3b818179::t_3b558775ceba4d 127
+  s_67291ad3e89daa::t_a1a321537a7b6e 82-90
+  s_ea843c3b818179::t_d71404f068c2f0 152
+  s_ea843c3b818179::t_e224deb8c27885 163
+  s_67291ad3e89daa::t_2bbd7dfc27acb1 195-197
+  s_67291ad3e89daa::t_381bbbd702823c 184-189
+  s_67291ad3e89daa::t_8b16dfca540588 100-102
+  s_67291ad3e89daa::t_4d0ade61521e54 227
+  s_67291ad3e89daa::t_a33e089fc48273 91-99,103-104
+deploy/include/FSM/State_RLBase.h
+  s_67291ad3e89daa::t_d1e2a028c4f645 17-23,25-29
+deploy/robots/g1_23dof/sim2sim/run_deploy.sh
+  s_3c3dde3dbdf153::t_7f7e41ee332bd9 8,16-18
+deploy/robots/g1_23dof/config/policy/table_tennis/v5/params/deploy.yaml
+  s_67291ad3e89daa::t_d82cd39e2bc563 30-33
+  s_3c3dde3dbdf153::t_834e56f3c9ca10 10
+deploy/include/isaaclab/envs/mdp/observations/observations.h
+  s_6c710e83880694::t_dcfbc1468b7ec2 136-145
+deploy/robots/g1_23dof/sim2sim/build_deploy.sh
+  s_3c3dde3dbdf153::t_43a0ed1cfb4da3 2-11,15-23,26,28-34
+  s_3c3dde3dbdf153::t_1b7a52bb1dacc7 24-25
+deploy/include/FSM/FSMState.h
+  s_3c3dde3dbdf153::t_ecc298768e2427 67-79
+deploy/robots/g1_23dof/config/policy/table_tennis/v4/params/deploy.yaml
+  s_3c3dde3dbdf153::t_834e56f3c9ca10 10
+deploy/robots/g1_23dof/sim2sim/ros_publish.py
+  s_3c3dde3dbdf153::t_58fa85105f5627 2-5
+  s_3c3dde3dbdf153::t_39431c4bb8e2c8 96-106
+  s_3c3dde3dbdf153::t_ea4f6873dc3a41 124,126
+  s_3c3dde3dbdf153::t_9c3de9180d941e 12,15-47
+  s_3c3dde3dbdf153::t_2dab6fd83a284c 48
+deploy/include/FSM/State_FixStand.h
+  s_3c3dde3dbdf153::t_a37d2d59603bd8 18-20,30,40,50,52,60
+deploy/robots/g1_23dof/sim2sim/switch_mode.sh
+  s_3c3dde3dbdf153::t_8a2026d33870a6 1-33,44-46,49-53,56-60
+  s_67291ad3e89daa::t_2b4bbb0f706662 39,42-43
+  s_67291ad3e89daa::t_5f29d8fa87a54d 47-48,54-55
+  s_ee10fa3faf43f2::t_c86c91c9bf7400 34-38,40-41
+  s_67291ad3e89daa::t_23523649f5949b 61-62
+deploy/robots/g1_23dof/sim2sim/scene/g1_23dof_tt_scene.xml
+  s_6c710e83880694::t_8a110ec9db6345 192-194,197-198
+  s_ee10fa3faf43f2::t_fba5a802945e1c 41
+deploy/robots/g1_23dof/sim2sim/serve.py
+  s_6c710e83880694::t_e1a4b659ac0110 24-29
+  s_ee10fa3faf43f2::t_2597af2b857090 12,17-22
+deploy/robots/g1_23dof/config/policy/table_tennis/v1/params/deploy.yaml
+  s_3c3dde3dbdf153::t_834e56f3c9ca10 10
+deploy/robots/g1_23dof/config/config.yaml
+  s_6c710e83880694::t_e2ff4d02847f1d 6
+  s_ee10fa3faf43f2::t_7f27c7d676b8a5 14-19
+  s_ea843c3b818179::t_22dc6ecd8bda2c 88-90
+  s_e9c28ec27b7fc3::t_c0d8d13608bfc5 110-116
+  s_6c710e83880694::t_eb03b499d2835b 44
+  s_67291ad3e89daa::t_9b7ea210f6e880 75-76
+  s_3c3dde3dbdf153::t_db6c0c411e0c6b 1-5,7
+  s_3c3dde3dbdf153::t_5d3b6367ba0747 91
+  s_6c710e83880694::t_5370aa97f29b7d 80
+deploy/robots/g1_23dof/config/policy/table_tennis/v0/params/deploy.yaml
+  s_3c3dde3dbdf153::t_834e56f3c9ca10 10
+deploy/robots/g1_23dof/config/policy/table_tennis/v2/params/deploy.yaml
+  s_3c3dde3dbdf153::t_834e56f3c9ca10 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "0a61d471b8c23d373b547e59069b5bbe0b96027a",
+  "prompts": {},
+  "humans": {
+    "h_5be2f231776523": {
+      "author": "T1Amoo <menxlee@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_3c3dde3dbdf153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15458806-6cf6-4584-83bd-fe66a6f6e6f3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_67291ad3e89daa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "415058ec-c840-42a5-b334-0dd65bab25a1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_6c710e83880694": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "447c545e-4e7d-4983-a73e-f42a11850540",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_e9c28ec27b7fc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3acc873d-713d-4d72-afa1-87601aa0e0f1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_ea843c3b818179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "733c425e-9756-4634-9a22-a2a1fedbb311",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_ee10fa3faf43f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ed0f5a6-6a65-42d3-92c4-84134b849a25",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
