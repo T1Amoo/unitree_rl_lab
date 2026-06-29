@@ -135,7 +135,7 @@ public:
                 // and the serve transition match training exactly. robot slot stays raw (training
                 // leaves [3:6] untouched).
                 env->tt_ball_pos  = s.engaged ? ball
-                                              : Eigen::Vector3f(-2.0f, -0.55f, 0.885f);  // home sentinel when idle (v7: hit_plane_x=-2.0; was -1.6 for v5)
+                                              : Eigen::Vector3f(-1.8f, -0.55f, 0.885f);  // home sentinel when idle (v11: hit_plane_x=-1.8; was -2.0 v7 / -1.6 v5)
                 env->tt_robot_pos = rpos;                          // raw base
                 // heading = IMU yaw minus a home offset captured at entry. NOT the mocap base quat
                 // (p.heading): the mocap rigid-body orientation flips ~180deg on marker occlusion ->
@@ -163,7 +163,7 @@ public:
                     if (++engage_frames_ >= PRED_WARMUP) {
                         env->tt_ball_prediction = Eigen::Vector3f(pred[0], pred[1], pred[2]);  // live prediction
                     } else {
-                        constexpr float HOME_X = -2.0f, HOME_Y = 0.0f;
+                        constexpr float HOME_X = -1.8f, HOME_Y = 0.0f;
                         env->tt_ball_prediction = Eigen::Vector3f(HOME_X, HOME_Y - 0.55f, 0.885f);
                     }
                 } else {
@@ -177,7 +177,7 @@ public:
                     // (Equivalent to training when the robot is at home x=-2.0; adds restoring.)
                     predictor_->clear();
                     engage_frames_ = 0;
-                    constexpr float HOME_X = -2.0f, HOME_Y = 0.0f;   // robot's trained standing base (v7 hit_plane_x=-2.0)
+                    constexpr float HOME_X = -1.8f, HOME_Y = 0.0f;   // robot's trained standing base (v11 hit_plane_x=-1.8)
                     env->tt_ball_prediction = Eigen::Vector3f(HOME_X, HOME_Y - 0.55f, 0.885f);
                 }
 

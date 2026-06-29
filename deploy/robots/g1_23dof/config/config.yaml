@@ -41,7 +41,9 @@ FSM:
     transitions:
       Passive: LT + B.on_pressed
       Velocity: RB + X.on_pressed
-      TableTennis: RB + Y.on_pressed   # TEMP re-added for real deploy (v3 Velocity buggy: crouch/idle-step). Remove again to restore forced FixStand->Velocity->TableTennis once v4 velocity is trained.
+    # Sequential flow restored (2026-06-29): FixStand -> Velocity -> TableTennis.
+    # FixStand can ONLY go to Velocity (or back to Passive); TableTennis is reached
+    # via Velocity. All three running states return to Passive (damping) with LT+B.
     # 23-wide, POLICY joint order (legs12, waist_yaw, Larm5, Rarm5). Target pose =
     # policy default_joint_pos so FixStand hands off cleanly to TableTennis. (Was a
     # 29-wide G1 array -> arm targets landed on the wrong joints on this 23-DoF robot.)
@@ -77,7 +79,7 @@ FSM:
   TableTennis:
     transitions:
       Passive: LT + B.on_pressed
-    policy_dir: config/policy/table_tennis/v10_41200
+    policy_dir: config/policy/table_tennis/v13_14900
     # Mocap topic names. Defaults below match the sim2sim publisher (ros_publish.py).
     # On the real robot, point these at your VRPN/Nokov/OptiTrack rigid-body topics,
     # e.g.  ball_topic: /vrpn_mocap/U_Tracker0/pose   (ball rigid body)

@@ -231,17 +231,22 @@ bash sim2sim/run_deploy_real.sh
 ```
 
 ### 6e. 真机控制(Unitree 手柄)
+
+**状态流程(顺序,2026-06-29):`Passive → FixStand → Velocity → TableTennis`**
+TableTennis 只能从 Velocity 进(不再有 FixStand 直达捷径)。三个运行态都能 `L2+B` 回阻尼。
+
 | 操作 | 按键 |
 |---|---|
 | 开机默认 | **Passive(阻尼)** |
 | Passive → FixStand(站立) | **L2 + ↑(方向键上)** |
-| FixStand → TableTennis(打球) | **R1 + Y** |
+| FixStand → Velocity(行走) | **R1 + X** |
+| Velocity → TableTennis(打球) | **R1 + Y** |
 | FixStand → 回阻尼 | **L2 + B** |
+| Velocity → 回阻尼 | **L2 + B** |
 | TableTennis → 回阻尼 | **L2 + B** |
-| (Velocity,已禁用) | R1 + X |
 
-**回阻尼/软急停 = `L2 + B`**(FixStand、TableTennis 都能直接回 Passive)。Passive 本身就是阻尼模式(只给 kd、不锁位置)。
-> 注:不能 Passive→TableTennis 直跳,必须先 `L2+↑` 进 FixStand,再 `R1+Y`。
+**回阻尼/软急停 = `L2 + B`**(FixStand、Velocity、TableTennis 三态都能直接回 Passive)。Passive 本身就是阻尼模式(只给 kd、不锁位置)。
+> 注:进 TableTennis 必须走 `L2+↑`(FixStand)→ `R1+X`(Velocity)→ `R1+Y`(TableTennis);不能跳级。进 TableTennis 时机器人要正对球桌(IMU heading 零点在进入瞬间标定)。
 
 ---
 

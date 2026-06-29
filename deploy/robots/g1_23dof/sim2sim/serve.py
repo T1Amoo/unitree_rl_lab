@@ -14,13 +14,16 @@ import os
 SERVE_LAUNCH = (1.35, 0.0, 1.03)
 G = 9.81
 Z_BOUNCE = 0.78
-# v7-MATCHED serve (2026-06-23): robot moved -1.6 -> -2.0, so the ball must bounce DEEP near
-# the table edge (-1.37) and fly FLAT+FAST to carry to the robot at -2.0 at racket-ready height
-# (~z1.0). Mirrors g1_tt_v7 training easy serve: bounce_x(-1.37,-1.31) vz(1.7,2.0). (Old mid-court
-# bounce -0.55 was for the -1.6 station and falls short at -2.0.)
-BOUNCE_X = (-1.37, -1.31)   # deep, near robot-side table edge (v7 easy)
-BOUNCE_VZ = (1.7, 2.0)     # flat+fast -> carries to -2.0 at z~1.0
-BOUNCE_Y = (-0.50, 0.50)   # WIDE: full lateral spread (matches training serve_y_start=0.5) -> left/right movement
+# v11-MATCHED serve (2026-06-26): robot moved -2.0 -> -1.8, serve re-tuned (vz dropped ~0.2) so the
+# ball bounces DEEP near the table edge (-1.37) and reaches the robot at -1.8 at racket-ready height
+# (~z1.0). Mirrors g1_tt_v11 training easy serve: bounce_x(-1.37,-1.31) vz(1.5,1.8). mujoco now has
+# air drag (tt_sim_mujoco) matching training, so the same vz reaches -1.8 as in sim.
+# TEMP: HIGH-ball test (2026-06-29) — serve consistently to arrival z~1.15-1.17 at -1.8 (the high
+# end of the v13 curriculum) to eyeball whether 1.17 is too high for the robot to hit cleanly.
+BOUNCE_X = (-1.10, -1.05)   # deep bounce -> high arrival
+BOUNCE_VZ = (2.2, 2.5)     # -> z ~1.14-1.18 at -1.8
+BOUNCE_Y = (-0.30, 0.30)   # near-center so height is the only variable
+BOUNCE_Y_MAG = (0.55, 0.72)  # alternating wide corners (>= training hard 0.72)
 # TT_SERVE_MID=1: easy MID-table serve for VIEWING — bounces mid-court so the post-bounce arc to
 # the robot at -2.0 is longer and easier to predict (the deep v7 serve bounces right in front of
 # the robot, little time to react). mujoco has no air drag so the higher arc still carries to -2.0.
@@ -34,6 +37,7 @@ class Serve:
         # interval_steps * control_dt(0.02) = serve period; 150 -> 3 s
         self.rng = rng if rng is not None else np.random.default_rng()
         self.interval_steps = interval_steps
+        self._serve_idx = 0   # for TT_SERVE_ALTERNATE left/right toggling
 
     def due(self, step):
         return step > 0 and step % self.interval_steps == 0
@@ -50,7 +54,13 @@ class Serve:
     def _normal_serve(self):
         x0, _, z0 = SERVE_LAUNCH
         x_b = self.rng.uniform(*BOUNCE_X)
-        y_b = self.rng.uniform(*BOUNCE_Y)
+        if os.environ.get("TT_SERVE_ALTERNATE", "0") == "1":
+            # alternate LEFT (+y) / RIGHT (-y) wide corners each serve
+            side = 1.0 if (self._serve_idx % 2 == 0) else -1.0
+            self._serve_idx += 1
+            y_b = side * self.rng.uniform(*BOUNCE_Y_MAG)
+        else:
+            y_b = self.rng.uniform(*BOUNCE_Y)
         vz = self.rng.uniform(*BOUNCE_VZ)
         # time to bounce (descending root of z0 + vz t - 0.5 g t^2 = Z_BOUNCE)
         t_b = (vz + np.sqrt(vz * vz + 2.0 * G * (z0 - Z_BOUNCE))) / G
