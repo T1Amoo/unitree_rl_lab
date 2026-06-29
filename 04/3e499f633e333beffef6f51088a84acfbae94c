@@ -1,0 +1,40 @@
+deploy/robots/g1_23dof/include/FSM/State_TableTennis.h
+  s_6c710e83880694::t_22fb3c3087be46 166
+  s_6c710e83880694::t_2cecd58b7b381f 180
+  s_6c710e83880694::t_d5d241f1b26a15 138
+deploy/robots/g1_23dof/sim2sim/serve.py
+  s_8aa4d77bcf6faf::t_cf3649f4eab764 26
+  s_6c710e83880694::t_c0f3598eb47eb2 17-20
+  s_8aa4d77bcf6faf::t_995c4d62f3bde7 40
+  s_8aa4d77bcf6faf::t_c11eded081f763 57-63
+  s_8aa4d77bcf6faf::t_f7e51132a4005b 21-25
+deploy/robots/g1_23dof/MANUAL.md
+  s_8aa4d77bcf6faf::t_6f480d9fbed5f9 234-237,242-243,245,248-249
+deploy/robots/g1_23dof/config/config.yaml
+  s_8aa4d77bcf6faf::t_0efaf150760041 82
+  s_8aa4d77bcf6faf::t_0fab8560c190bc 44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "043e499f633e333beffef6f51088a84acfbae94c",
+  "prompts": {},
+  "sessions": {
+    "s_6c710e83880694": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "447c545e-4e7d-4983-a73e-f42a11850540",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_8aa4d77bcf6faf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f631d844-f58c-42e4-98f7-67b32f2148c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
