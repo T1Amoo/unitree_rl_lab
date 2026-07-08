@@ -1,0 +1,74 @@
+deploy/robots/a1_h1/sim2sim/run_deploy.sh
+  s_6f18e1ea307e97::t_621883d4451ed0 27-30
+  s_6f18e1ea307e97::t_be03b37fa0d7c7 1-18,33-44
+  s_6f18e1ea307e97::t_df21d43e6ee4bc 19-26,31-32
+deploy/robots/a1_h1/CMakeLists.txt
+  s_6f18e1ea307e97::t_7e98242882072e 1-47
+deploy/robots/a1_h1/sim2sim/README.md
+  s_6f18e1ea307e97::t_cffc49e4479fa0 1-114
+deploy/robots/a1_h1/README.md
+  s_6f18e1ea307e97::t_87ac298fbe4616 1-125
+deploy/robots/a1_h1/launch/a1_policy_bridge_cpp.launch.py
+  s_6f18e1ea307e97::t_7e98242882072e 1-91
+deploy/robots/a1_h1/sim2real_python_legacy/launch/a1_policy_bridge.launch.py
+  s_6f18e1ea307e97::t_7e98242882072e 1-88
+deploy/robots/a1_h1/sim2sim/policy_io.py
+  s_6f18e1ea307e97::t_7e98242882072e 1-298
+deploy/robots/a1_h1/sim2real_python_legacy/sim2real_bridge/policy_runtime.py
+  s_6f18e1ea307e97::t_7e98242882072e 1-435
+deploy/robots/a1_h1/MANUAL.md
+  s_6f18e1ea307e97::t_aded3bac20f514 1-418
+deploy/robots/a1_h1/sim2real_python_legacy/README.md
+  s_6f18e1ea307e97::t_5bda3c2da04490 1-110
+deploy/robots/a1_h1/sim2sim/a1_scene.py
+  s_6f18e1ea307e97::t_67e63f07705280 468
+  s_6f18e1ea307e97::t_7e98242882072e 1-467,469-544
+deploy/robots/a1_h1/src/a1_policy_bridge_cpp.cpp
+  s_6f18e1ea307e97::t_f4a08827387c4e 1-884
+deploy/robots/a1_h1/sim2sim/build_deploy.sh
+  s_6f18e1ea307e97::t_be03b37fa0d7c7 1-23
+deploy/robots/a1_h1/package.xml
+  s_6f18e1ea307e97::t_09533f309f2ac6 1-23
+deploy/robots/a1_h1/sim2real_python_legacy/package.xml
+  s_6f18e1ea307e97::t_9cd31d8f9a8399 1-22
+deploy/robots/a1_h1/sim2real_python_legacy/resource/sim2real_bridge
+  s_6f18e1ea307e97::t_233e5bbabbd3da 1
+deploy/robots/a1_h1/sim2real_python_legacy/setup.cfg
+  s_6f18e1ea307e97::t_a46fb73b8de166 1-4
+deploy/robots/a1_h1/sim2real_python_legacy/setup.py
+  s_6f18e1ea307e97::t_29a87ffa199df1 1-25
+deploy/robots/a1_h1/sim2real_python_legacy/sim2real_bridge/__init__.py
+  s_6f18e1ea307e97::t_c14843992c015f 1
+deploy/robots/a1_h1/sim2real_python_legacy/sim2real_bridge/a1_policy_bridge_node.py
+  s_6f18e1ea307e97::t_8c4e8b2a6559b1 1-238
+deploy/robots/a1_h1/sim2sim/__init__.py
+  s_6f18e1ea307e97::t_0df1f96f0640ab 1-2
+deploy/robots/a1_h1/sim2sim/ball_gate.py
+  s_6f18e1ea307e97::t_43e639c321e0f5 1-149
+deploy/robots/a1_h1/sim2sim/build_a1_mjcf.py
+  s_6f18e1ea307e97::t_e1c378ad05e332 1-27
+deploy/robots/a1_h1/sim2sim/run_a1_tt_sim2sim.py
+  s_6f18e1ea307e97::t_ec03ba5911752d 1-388
+deploy/robots/a1_h1/sim2sim/scene/a1_tt_scene.xml
+  s_6f18e1ea307e97::t_0c93a08312c7cc 1-237
+deploy/robots/a1_h1/sim2sim/serve.py
+  s_6f18e1ea307e97::t_0bc08a60421e3a 1-34
+deploy/robots/a1_h1/sim2sim/test_a1_sim2sim.py
+  s_6f18e1ea307e97::t_5089dc06bf70f1 1-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b1f0409733991ec5dbc1eb5d45d7b4f04a3a67e0",
+  "prompts": {},
+  "sessions": {
+    "s_6f18e1ea307e97": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3aa3-49d2-7493-8613-4085b273cdd4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
