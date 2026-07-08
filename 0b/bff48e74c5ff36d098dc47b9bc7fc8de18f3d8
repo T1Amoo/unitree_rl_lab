@@ -1,0 +1,165 @@
+deploy/robots/g1_23dof/config/policy/table_tennis/v14_16900/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_d3070e11f17290 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_30000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_d22e58577f2e1f 1-97
+deploy/robots/g1_23dof/config/policy/velocity/params/agent.yaml
+  s_67291ad3e89daa::t_44889840434c61 1-59
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_20500/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_5107961cb0c449 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_27000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_348c4a0eff958f 1-97
+deploy/robots/g1_23dof/config/policy/velocity/params/velocity_env_cfg.py
+  s_67291ad3e89daa::t_0889100bb7617d 1-546
+deploy/robots/g1_23dof/config/policy/table_tennis/v13_12000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+  s_8aa4d77bcf6faf::t_27e526e49293dd 1-12,14-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v10_40000/params/deploy.yaml
+  s_6c710e83880694::t_361c24cc469501 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_23500/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_e5abfc4279fa9b 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v12_11000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_b8d925e6df1187 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v12_10000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_27e526e49293dd 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v13_13000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+  s_8aa4d77bcf6faf::t_27e526e49293dd 1-12,14-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_28500/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_a40289b9d51474 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v7_29999/params/deploy.yaml
+  s_ee10fa3faf43f2::t_65c7d45d3f2c91 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v10_37600/params/deploy.yaml
+  s_6c710e83880694::t_32508511503c0c 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/config.yaml
+  h_5be2f231776523 82
+deploy/robots/g1_23dof/config/policy/table_tennis/v10_37000/params/deploy.yaml
+  s_6c710e83880694::t_361c24cc469501 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v12_14000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+  s_8aa4d77bcf6faf::t_fdbc2140def453 1-12,14-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_35000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_343a564c26c34d 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_19500/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_8932c28ec883aa 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_25000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_6d67f0b5212c28 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v7_25000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+  s_ee10fa3faf43f2::t_65c7d45d3f2c91 1-12,14-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v13_14900/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_27e526e49293dd 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v13_14000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_27e526e49293dd 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v11_34100/params/deploy.yaml
+  s_6c710e83880694::t_0ff513a8904db8 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v11_34500/params/deploy.yaml
+  s_6c710e83880694::t_0ff513a8904db8 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_33000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_433aa9ef4d62fe 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v8_33000/params/deploy.yaml
+  s_6c710e83880694::t_de48f28798eb94 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_22000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_3e0dcf06d23749 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v11_34000/params/deploy.yaml
+  s_6c710e83880694::t_45bc97d07c3767 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v10_39000/params/deploy.yaml
+  s_6c710e83880694::t_674b67cf32a453 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v12_12800/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_a44fafd9cb05c8 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v14_20700/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_ac91b5629d7921 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v7/params/deploy.yaml
+  s_ee10fa3faf43f2::t_20a691fd1840bf 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/table_tennis/v16_45000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_691e51a25d50e5 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v10_41200/params/deploy.yaml
+  s_6c710e83880694::t_0b401408919398 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/sim2sim/serve.py
+  s_8aa4d77bcf6faf::t_e55ee1af9456dc 21-27
+deploy/robots/g1_23dof/config/policy/table_tennis/v14_18000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 1-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v8_34999/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+  s_6c710e83880694::t_de48f28798eb94 1-12,14-97
+deploy/robots/g1_23dof/config/policy/table_tennis/v12_13000/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_6cc9fd96438366 1-12,14-97
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 13
+deploy/robots/g1_23dof/config/policy/velocity/params/deploy.yaml
+  s_8aa4d77bcf6faf::t_9e12d7c81fcc23 10
+  s_67291ad3e89daa::t_76bcf879eb9a90 7,22-24,28,30-31,39,41
+  s_67291ad3e89daa::t_13379209f3549d 33
+  s_ee10fa3faf43f2::t_d8588d4cc0a728 1-6,8-9,11-21,25-27,29,32,34-38,40,42-88
+.gitignore
+  s_6f18e1ea307e97::t_73bbfe9e73463e 74-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0bbff48e74c5ff36d098dc47b9bc7fc8de18f3d8",
+  "prompts": {},
+  "humans": {
+    "h_5be2f231776523": {
+      "author": "T1Amoo <menxlee@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_67291ad3e89daa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "415058ec-c840-42a5-b334-0dd65bab25a1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_6c710e83880694": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "447c545e-4e7d-4983-a73e-f42a11850540",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_6f18e1ea307e97": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3aa3-49d2-7493-8613-4085b273cdd4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_8aa4d77bcf6faf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f631d844-f58c-42e4-98f7-67b32f2148c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_ee10fa3faf43f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ed0f5a6-6a65-42d3-92c4-84134b849a25",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
