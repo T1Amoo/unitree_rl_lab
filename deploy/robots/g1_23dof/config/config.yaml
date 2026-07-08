@@ -79,7 +79,7 @@ FSM:
   TableTennis:
     transitions:
       Passive: LT + B.on_pressed
-    policy_dir: config/policy/table_tennis/v13_14900
+    policy_dir: config/policy/table_tennis/v16_35000
     # Mocap topic names. Defaults below match the sim2sim publisher (ros_publish.py).
     # On the real robot, point these at your VRPN/Nokov/OptiTrack rigid-body topics,
     # e.g.  ball_topic: /vrpn_mocap/U_Tracker0/pose   (ball rigid body)

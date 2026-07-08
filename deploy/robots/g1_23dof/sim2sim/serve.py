@@ -18,12 +18,13 @@ Z_BOUNCE = 0.78
 # ball bounces DEEP near the table edge (-1.37) and reaches the robot at -1.8 at racket-ready height
 # (~z1.0). Mirrors g1_tt_v11 training easy serve: bounce_x(-1.37,-1.31) vz(1.5,1.8). mujoco now has
 # air drag (tt_sim_mujoco) matching training, so the same vz reaches -1.8 as in sim.
-# TEMP: HIGH-ball test (2026-06-29) — serve consistently to arrival z~1.15-1.17 at -1.8 (the high
-# end of the v13 curriculum) to eyeball whether 1.17 is too high for the robot to hit cleanly.
-BOUNCE_X = (-1.10, -1.05)   # deep bounce -> high arrival
-BOUNCE_VZ = (2.2, 2.5)     # -> z ~1.14-1.18 at -1.8
-BOUNCE_Y = (-0.30, 0.30)   # near-center so height is the only variable
-BOUNCE_Y_MAG = (0.55, 0.72)  # alternating wide corners (>= training hard 0.72)
+# v14 model_18000 was trained up to curriculum c~0.30 (old ramp, iter18000) — NOT full c=1. Serve
+# the c=0.30 distribution it actually saw (lerp easy->boxT at 30%) so we judge what it learned,
+# not balls beyond its training. easy xb(-0.90,-0.76)vz(1.2,1.6) -> hard xb(-0.85,-0.72)vz(1.5,3.0).
+BOUNCE_X = (-0.885, -0.748)   # c=0.30 interp
+BOUNCE_VZ = (1.29, 2.02)     # c=0.30 interp (z mostly ~1.0-1.08, occasional higher)
+BOUNCE_Y = (-0.50, 0.50)     # y fixed (serve_y_start=serve_y_wide=0.5)
+BOUNCE_Y_MAG = (0.55, 0.72)  # alternating wide corners (unused unless TT_SERVE_ALTERNATE=1)
 # TT_SERVE_MID=1: easy MID-table serve for VIEWING — bounces mid-court so the post-bounce arc to
 # the robot at -2.0 is longer and easier to predict (the deep v7 serve bounces right in front of
 # the robot, little time to react). mujoco has no air drag so the higher arc still carries to -2.0.

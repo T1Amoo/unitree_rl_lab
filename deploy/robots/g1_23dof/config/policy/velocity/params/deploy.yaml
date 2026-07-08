@@ -1,0 +1,88 @@
+# G1 23-DoF Velocity (locomotion) Policy v2 — deploy config
+# Trained: Pingpong_TTRL logs/g1_locomotion_v2/2026-06-22_20-59-48/model_24998 (25k iters, from scratch).
+# v2 = deploy-compatible: actor obs has NO base_lin_vel (privileged -> critic only), action_delay on,
+# obs_scales all 1.0. Joint order == TableTennis (leg-first 23-DoF) so same joint_ids_map/gains.
+# track_lin_vel_xy converged ~0.77 (vs v1 0.94 w/ privileged obs) — judge by sim2sim gait.
+
+step_dt: 0.02
+
+# policy order -> sparse G1 29-DoF SDK motor indices (arms 15-19/22-26). Same as TableTennis.
+joint_ids_map: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26]
+
+# PD gains from training implicit actuator model (Pingpong g1.py): NF=10*2pi, zeta=2.
+# Order = policy/obs joint order. legs hip_pitch/yaw=7520_14, hip_roll/knee=7520_22,
+# ankle=2x5020, waist_yaw=7520_22, arms=5020. (Identical to TableTennis — same robot asset.)
+stiffness: [40.18, 99.09, 40.18, 99.09, 28.50, 28.50, 40.18, 99.09, 40.18, 99.09, 28.50, 28.50, 99.09, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25, 14.25]
+damping:   [2.558, 6.309, 2.558, 6.309, 1.814, 1.814, 2.558, 6.309, 2.558, 6.309, 1.814, 1.814, 6.309, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907, 0.907]
+
+# 23-DoF default joint positions (radians), policy/obs joint order (G1_JOINT_NAMES, leg-first).
+default_joint_pos: [-0.312, 0.0, 0.0, 0.669, -0.363, 0.0, -0.312, 0.0, 0.0, 0.669, -0.363, 0.0, 0.0, 0.2, 0.2, 0.0, 0.6, 0.0, 0.2, -0.2, 0.0, 0.6, 0.0]
+
+# Velocity commands (joystick-driven in deploy/sim2sim). Ranges from g1_locomotion_config.
+commands:
+  base_velocity:
+    ranges:
+      lin_vel_x: [-0.5, 0.8]
+      lin_vel_y: [-0.4, 0.4]
+      ang_vel_z: [-1.0, 1.0]
+      heading: null
+
+actions:
+  JointPositionAction:
+    # action_scale=0.25 from training config; output = scale*action_net + offset.
+    scale: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+    offset: [-0.312, 0.0, 0.0, 0.669, -0.363, 0.0, -0.312, 0.0, 0.0, 0.669, -0.363, 0.0, 0.0, 0.2, 0.2, 0.0, 0.6, 0.0, 0.2, -0.2, 0.0, 0.6, 0.0]
+    # SAFETY guardrail (MANDATORY per deploy iron-law "clip必开"): clamp commanded joint
+    # target (scale*action+offset) to URDF joint limits, policy order. Same array as TableTennis
+    # (same robot). Without it, untrained free DoFs (e.g. ankle_roll) can run away to 1e7.
+    clip: [[-2.5307,2.8798],[-0.5236,2.9671],[-2.7576,2.7576],[-0.0873,2.8798],[-0.8727,0.5236],[-0.2618,0.2618],[-2.5307,2.8798],[-2.9671,0.5236],[-2.7576,2.7576],[-0.0873,2.8798],[-0.8727,0.5236],[-0.2618,0.2618],[-2.618,2.618],[-3.0892,2.6704],[-1.5882,2.2515],[-2.618,2.618],[-1.0472,2.0944],[-1.9722,1.9722],[-3.0892,2.6704],[-2.2515,1.5882],[-2.618,2.618],[-1.0472,2.0944],[-1.9722,1.9722]]
+    joint_ids: null
+
+observations:
+  obs:  # group name MUST match policy.onnx input name ("obs")
+    use_gym_history: true  # frame-major (outer=history, inner=terms), matches actor_obs_buffer.reshape
+
+    # Term order MUST match v2 actor_obs concat (legged_env.py:164-172), 80 dims per frame:
+    # [0:2] gait_phase | [2:5] base_ang_vel | [5:8] projected_gravity | [8:11] velocity_commands |
+    # [11:34] joint_pos_rel | [34:57] joint_vel_rel | [57:80] last_action.  history_length=10 -> 800.
+    gait_phase:
+      params: {period: 0.8}
+      clip: null
+      scale: [1.0, 1.0]
+      history_length: 10
+
+    base_ang_vel:
+      params: {}
+      clip: null
+      scale: [1.0, 1.0, 1.0]
+      history_length: 10
+
+    projected_gravity:
+      params: {}
+      clip: null
+      scale: [1.0, 1.0, 1.0]
+      history_length: 10
+
+    velocity_commands:
+      params: {command_name: base_velocity}
+      clip: null
+      scale: [1.0, 1.0, 1.0]
+      history_length: 10
+
+    joint_pos_rel:
+      params: {}
+      clip: null
+      scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      history_length: 10
+
+    joint_vel_rel:
+      params: {}
+      clip: null
+      scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      history_length: 10
+
+    last_action:
+      params: {}
+      clip: null
+      scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      history_length: 10
