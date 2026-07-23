@@ -19,7 +19,7 @@ class BallGateConfig:
     z_max: float = 2.6
     x_max: float = 1.65
     speed_max: float = 15.0
-    vx_away: float = 0.0
+    vx_away: float = -0.05
     behind_margin: float = 0.05
     bounce_vz_down: float = 0.30
     bounce_vz_up: float = 0.05

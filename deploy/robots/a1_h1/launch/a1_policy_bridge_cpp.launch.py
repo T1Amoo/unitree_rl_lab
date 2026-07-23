@@ -17,7 +17,7 @@ def _guess_lgy_root() -> Path:
 
 DEFAULT_POLICY = (
     _guess_lgy_root()
-    / "Pingpong_TTRL/logs/a1_tt_v11/2026-07-07_10-48-31/exported/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_real_v1/2026-07-09_11-05-36_scratch_qdes_slew/exported/policy.onnx"
 )
 
 
@@ -25,24 +25,62 @@ def generate_launch_description():
     policy_path = LaunchConfiguration("policy_path")
     predictor_path = LaunchConfiguration("predictor_path")
     start_arm_control = LaunchConfiguration("start_arm_control")
+    start_vrpn_ball_bridge = LaunchConfiguration("start_vrpn_ball_bridge")
+    start_fsm = LaunchConfiguration("start_fsm")
+    start_policy_bridge = LaunchConfiguration("start_policy_bridge")
     publish_actions = LaunchConfiguration("publish_actions")
     publish_position_velocity = LaunchConfiguration("publish_position_velocity")
+    policy_enabled_on_start = LaunchConfiguration("policy_enabled_on_start")
     enable_on_start = LaunchConfiguration("enable_on_start")
     enable_motors_on_start = LaunchConfiguration("enable_motors_on_start")
     right_arm_device = LaunchConfiguration("right_arm_device")
+    fixstand_use_movej = LaunchConfiguration("fixstand_use_movej")
+    fixstand_enable_settle_s = LaunchConfiguration("fixstand_enable_settle_s")
+    vrpn_ball_topic = LaunchConfiguration("vrpn_ball_topic")
     ball_state_topic = LaunchConfiguration("ball_state_topic")
+    test_enabled = LaunchConfiguration("test_enabled")
+    test_signal_type = LaunchConfiguration("test_signal_type")
+    test_joint_index = LaunchConfiguration("test_joint_index")
+    test_freq_hz = LaunchConfiguration("test_freq_hz")
+    test_chirp_start_hz = LaunchConfiguration("test_chirp_start_hz")
+    test_chirp_end_hz = LaunchConfiguration("test_chirp_end_hz")
+    test_amplitude_rad = LaunchConfiguration("test_amplitude_rad")
+    test_cycles = LaunchConfiguration("test_cycles")
+    test_duration_s = LaunchConfiguration("test_duration_s")
+    test_warmup_s = LaunchConfiguration("test_warmup_s")
+    test_post_hold_s = LaunchConfiguration("test_post_hold_s")
+    test_ramp_s = LaunchConfiguration("test_ramp_s")
 
     return LaunchDescription(
         [
             DeclareLaunchArgument("policy_path", default_value=str(DEFAULT_POLICY)),
             DeclareLaunchArgument("predictor_path", default_value=""),
             DeclareLaunchArgument("start_arm_control", default_value="false"),
+            DeclareLaunchArgument("start_vrpn_ball_bridge", default_value="false"),
+            DeclareLaunchArgument("start_fsm", default_value="true"),
+            DeclareLaunchArgument("start_policy_bridge", default_value="true"),
             DeclareLaunchArgument("publish_actions", default_value="true"),
-            DeclareLaunchArgument("publish_position_velocity", default_value="false"),
+            DeclareLaunchArgument("publish_position_velocity", default_value="true"),
+            DeclareLaunchArgument("policy_enabled_on_start", default_value="false"),
             DeclareLaunchArgument("enable_on_start", default_value="false"),
             DeclareLaunchArgument("enable_motors_on_start", default_value="false"),
-            DeclareLaunchArgument("right_arm_device", default_value="/dev/ttyCANR"),
+            DeclareLaunchArgument("right_arm_device", default_value="/dev/ttyACM1"),
+            DeclareLaunchArgument("fixstand_use_movej", default_value="true"),
+            DeclareLaunchArgument("fixstand_enable_settle_s", default_value="0.5"),
+            DeclareLaunchArgument("vrpn_ball_topic", default_value="/vrpn_mocap/U_Tracker0/pose"),
             DeclareLaunchArgument("ball_state_topic", default_value="/ball/state"),
+            DeclareLaunchArgument("test_enabled", default_value="true"),
+            DeclareLaunchArgument("test_signal_type", default_value="sine"),
+            DeclareLaunchArgument("test_joint_index", default_value="1"),
+            DeclareLaunchArgument("test_freq_hz", default_value="0.5"),
+            DeclareLaunchArgument("test_chirp_start_hz", default_value="0.1"),
+            DeclareLaunchArgument("test_chirp_end_hz", default_value="3.0"),
+            DeclareLaunchArgument("test_amplitude_rad", default_value="0.12"),
+            DeclareLaunchArgument("test_cycles", default_value="8.0"),
+            DeclareLaunchArgument("test_duration_s", default_value="0.0"),
+            DeclareLaunchArgument("test_warmup_s", default_value="2.0"),
+            DeclareLaunchArgument("test_post_hold_s", default_value="1.0"),
+            DeclareLaunchArgument("test_ramp_s", default_value="0.5"),
             Node(
                 package="armcontrol",
                 executable="inference_arm_control_node",
@@ -61,8 +99,81 @@ def generate_launch_description():
                         "enable_motors_on_start": ParameterValue(enable_motors_on_start, value_type=bool),
                         "publish_joint_states": True,
                         "action_format": "auto",
-                        "interpolation_mode": "hermite",
+                        "interpolation_mode": "linear",
                         "action_timeout_s": 0.15,
+                        "kps": [300.0, 300.0, 300.0, 120.0, 120.0, 120.0, 120.0],
+                        "kds": [3.5, 3.5, 3.5, 1.0, 1.0, 1.0, 1.0],
+                        "torque_ff_scale": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "enable_mit_velocity": False,
+                        "max_vel": [10.0, 10.0, 10.0, 30.0, 30.0, 30.0, 30.0],
+                        "max_acc": [80.0, 80.0, 80.0, 160.0, 160.0, 160.0, 160.0],
+                        "max_delta_per_cycle": [0.08, 0.08, 0.08, 0.16, 0.16, 0.16, 0.16],
+                    }
+                ],
+            ),
+            Node(
+                package="sim2real_bridge_cpp",
+                executable="a1_vrpn_ball_state_bridge",
+                name="a1_vrpn_ball_state_bridge",
+                output="screen",
+                condition=IfCondition(start_vrpn_ball_bridge),
+                parameters=[
+                    {
+                        "input_topic": vrpn_ball_topic,
+                        "output_topic": ball_state_topic,
+                        "origin_in_training_world": [0.0, 0.0, 0.76],
+                        "rotation_wxyz_to_training": [1.0, 0.0, 0.0, 0.0],
+                        "velocity_lpf_alpha": 0.35,
+                        "diag_every": 50,
+                    }
+                ],
+            ),
+            Node(
+                package="sim2real_bridge_cpp",
+                executable="a1_tt_fsm_supervisor",
+                name="a1_tt_fsm_supervisor",
+                output="screen",
+                condition=IfCondition(start_fsm),
+                parameters=[
+                    {
+                        "joint_state_topic": "/right_joint_states",
+                        "action_topic": "/model_action",
+                        "right_movej_topic": "/movej_right_angle",
+                        "enable_topic": "/model_control/enable",
+                        "policy_enable_topic": "/a1_tt/policy_enable",
+                        "damping_topic": "/model_control/damping",
+                        "joystick_topic": "/joystick_info",
+                        "command_topic": "/a1_tt/fsm_command",
+                        "state_topic": "/a1_tt/fsm_state",
+                        "control_hz": 50.0,
+                        "joint_timeout_s": 10.0,
+                        "joystick_fixstand_code": 27,
+                        "joystick_table_tennis_code": 28,
+                        "joystick_passive_code": 21,
+                        "require_ready_for_tt": True,
+                        "hold_ready": True,
+                        "fixstand_timeout_s": 60.0,
+                        "fixstand_interp_s": 2.0,
+                        "fixstand_enable_settle_s": ParameterValue(fixstand_enable_settle_s, value_type=float),
+                        "enable_republish_ticks": 0,
+                        "diag_every": 10,
+                        "fixstand_use_movej": ParameterValue(fixstand_use_movej, value_type=bool),
+                        "damping_exit_delay_s": 0.10,
+                        "joystick_debounce_s": 0.50,
+                        "test_enabled": ParameterValue(test_enabled, value_type=bool),
+                        "require_ready_for_test": True,
+                        "test_signal_type": test_signal_type,
+                        "test_joint_index": ParameterValue(test_joint_index, value_type=int),
+                        "test_freq_hz": ParameterValue(test_freq_hz, value_type=float),
+                        "test_chirp_start_hz": ParameterValue(test_chirp_start_hz, value_type=float),
+                        "test_chirp_end_hz": ParameterValue(test_chirp_end_hz, value_type=float),
+                        "test_amplitude_rad": ParameterValue(test_amplitude_rad, value_type=float),
+                        "test_cycles": ParameterValue(test_cycles, value_type=float),
+                        "test_duration_s": ParameterValue(test_duration_s, value_type=float),
+                        "test_warmup_s": ParameterValue(test_warmup_s, value_type=float),
+                        "test_post_hold_s": ParameterValue(test_post_hold_s, value_type=float),
+                        "test_ramp_s": ParameterValue(test_ramp_s, value_type=float),
+                        "test_done_to_ready": True,
                     }
                 ],
             ),
@@ -71,6 +182,7 @@ def generate_launch_description():
                 executable="a1_policy_bridge_cpp",
                 name="a1_policy_bridge_cpp",
                 output="screen",
+                condition=IfCondition(start_policy_bridge),
                 parameters=[
                     {
                         "policy_path": policy_path,
@@ -79,11 +191,18 @@ def generate_launch_description():
                         "ball_state_topic": ball_state_topic,
                         "action_topic": "/model_action",
                         "enable_topic": "/model_control/enable",
+                        "policy_enable_topic": "/a1_tt/policy_enable",
                         "control_hz": 50.0,
                         "publish_actions": ParameterValue(publish_actions, value_type=bool),
                         "publish_position_velocity": ParameterValue(publish_position_velocity, value_type=bool),
+                        "policy_enabled_on_start": ParameterValue(policy_enabled_on_start, value_type=bool),
                         "enable_on_start": ParameterValue(enable_on_start, value_type=bool),
-                        "hold_when_ball_stale": True,
+                        "hold_when_ball_stale": False,
+                        "servo_filter_enabled": False,
+                        "servo_tau_s": 0.25,
+                        "servo_velocity_limit": [1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0],
+                        "qdes_slew_enabled": True,
+                        "max_delta_per_tick": [0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100],
                     }
                 ],
             ),

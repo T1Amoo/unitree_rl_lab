@@ -48,7 +48,7 @@ RIGHT_Q_MIN = np.array([-1.05, -3.14, -2.76, -1.92, -2.76, -1.57, -2.76], dtype=
 RIGHT_Q_MAX = np.array([3.14, 0.262, 2.76, 1.92, 2.76, 1.57, 2.76], dtype=np.float64)
 
 ROBOT_TABLE_POS = np.array([-1.8, 0.76, 0.0282], dtype=np.float32)
-HIT_PLANE_X = -1.55
+HIT_PLANE_X = -1.60
 HOME_Y = 0.76
 PADDLE_Y_OFFSET = -0.66
 HIT_BODY_HEIGHT = 0.028
@@ -66,7 +66,7 @@ def guess_lgy_root() -> Path:
 
 
 LGY_ROOT = guess_lgy_root()
-DEFAULT_POLICY = LGY_ROOT / "Pingpong_TTRL/logs/a1_tt_v11/2026-07-07_10-48-31/exported/policy.onnx"
+DEFAULT_POLICY = LGY_ROOT / "Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx"
 
 
 def soft_joint_ranges() -> tuple[np.ndarray, np.ndarray]:

@@ -34,7 +34,7 @@ constexpr double kSoftJointLimitFactor = 0.95;
 constexpr int kFrameSize = 39;
 constexpr int kHistory = 5;
 constexpr int kObsSize = kFrameSize * kHistory;
-constexpr double kHitPlaneX = -1.55;
+constexpr double kHitPlaneX = -1.60;
 constexpr double kHomeY = 0.76;
 constexpr double kPaddleYOffset = -0.66;
 constexpr double kHitBodyHeight = 0.028;
@@ -66,6 +66,8 @@ const std::array<float, 3> kPredSentinel = {
     static_cast<float>(kHitPlaneX),
     static_cast<float>(kHomeY + kPaddleYOffset),
     static_cast<float>(kHitBodyHeight + 0.2)};
+const std::array<double, 7> kIsaacServoVelocityLimit = {
+    1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0};
 
 fs::path findLgyRootFrom(fs::path start) {
     start = fs::absolute(start);
@@ -93,7 +95,7 @@ fs::path findLgyRoot() {
 
 std::string defaultPolicyPath() {
     return (findLgyRoot() /
-            "Pingpong_TTRL/logs/a1_tt_v11/2026-07-07_10-48-31/exported/policy.onnx")
+            "Pingpong_TTRL/logs/a1_tt_real_v1/2026-07-09_11-05-36_scratch_qdes_slew/exported/policy.onnx")
         .string();
 }
 
@@ -235,7 +237,7 @@ struct BallGateConfig {
     double z_max = 2.6;
     double x_max = 1.65;
     double speed_max = 15.0;
-    double vx_away = 0.0;
+    double vx_away = -0.05;
     double behind_margin = 0.05;
     double bounce_vz_down = 0.30;
     double bounce_vz_up = 0.05;
@@ -395,27 +397,45 @@ public:
         predictor_path_ = declare_parameter<std::string>("predictor_path", "");
         use_predictor_ = declare_parameter<bool>("use_predictor", true);
         control_hz_ = declare_parameter<double>("control_hz", 50.0);
-        joint_timeout_s_ = declare_parameter<double>("joint_timeout_s", 0.25);
+        joint_timeout_s_ = declare_parameter<double>("joint_timeout_s", 2.0);
         ball_timeout_s_ = declare_parameter<double>("ball_timeout_s", 0.20);
         publish_actions_ = declare_parameter<bool>("publish_actions", true);
         publish_position_velocity_ = declare_parameter<bool>("publish_position_velocity", false);
+        servo_filter_enabled_ = declare_parameter<bool>("servo_filter_enabled", true);
+        servo_tau_s_ = declare_parameter<double>("servo_tau_s", 0.25);
+        qdes_slew_enabled_ = declare_parameter<bool>("qdes_slew_enabled", false);
+        policy_enabled_ = declare_parameter<bool>("policy_enabled_on_start", false);
         enable_on_start_ = declare_parameter<bool>("enable_on_start", false);
         disable_on_stale_joint_ = declare_parameter<bool>("disable_on_stale_joint", true);
-        hold_when_ball_stale_ = declare_parameter<bool>("hold_when_ball_stale", true);
+        hold_when_ball_stale_ = declare_parameter<bool>("hold_when_ball_stale", false);
         diag_every_ = declare_parameter<int>("diag_every", 50);
         action_topic_ = declare_parameter<std::string>("action_topic", "/model_action");
         enable_topic_ = declare_parameter<std::string>("enable_topic", "/model_control/enable");
+        policy_enable_topic_ = declare_parameter<std::string>("policy_enable_topic", "/a1_tt/policy_enable");
         joint_state_topic_ = declare_parameter<std::string>("joint_state_topic", "/right_joint_states");
         ball_state_topic_ = declare_parameter<std::string>("ball_state_topic", "/ball/state");
-        auto max_delta = declare_parameter<std::vector<double>>("max_delta_per_tick", std::vector<double>(7, 0.0));
+        const std::vector<double> default_max_delta_per_tick{
+            0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160};
+        auto max_delta = declare_parameter<std::vector<double>>("max_delta_per_tick", default_max_delta_per_tick);
         if (max_delta.size() != 7) {
             throw std::runtime_error("max_delta_per_tick must contain 7 values");
         }
         std::copy(max_delta.begin(), max_delta.end(), max_delta_per_tick_.begin());
+        auto servo_vel = declare_parameter<std::vector<double>>(
+            "servo_velocity_limit",
+            std::vector<double>(kIsaacServoVelocityLimit.begin(), kIsaacServoVelocityLimit.end()));
+        if (servo_vel.size() != 7) {
+            throw std::runtime_error("servo_velocity_limit must contain 7 values");
+        }
+        std::copy(servo_vel.begin(), servo_vel.end(), servo_velocity_limit_.begin());
+        if (servo_tau_s_ <= 0.0) {
+            throw std::runtime_error("servo_tau_s must be > 0");
+        }
 
         BallGateConfig gate_cfg;
         gate_cfg.confirm_frames = declare_parameter<int>("gate_confirm_frames", 1);
         gate_cfg.coast_frames = declare_parameter<int>("gate_coast_frames", 1);
+        gate_cfg.vx_away = declare_parameter<double>("gate_min_approach_vx", -0.05);
         gate_ = std::make_unique<BallValidityGate>(gate_cfg);
 
         auto ranges = softJointRanges();
@@ -423,6 +443,7 @@ public:
         q_max_ = ranges.second;
         last_action_.fill(0.0f);
         last_q_des_ = kDefaultRightQ;
+        resetServoFilter(std::nullopt);
         resetPolicy(std::nullopt);
 
         policy_ = std::make_unique<OrtRunner>(policy_path_);
@@ -443,12 +464,18 @@ public:
         enable_pub_ = create_publisher<std_msgs::msg::Bool>(enable_topic_, 10);
         raw_action_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/raw_action", 10);
         q_des_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/q_des", 10);
+        raw_q_des_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/raw_q_des", 10);
+        dq_des_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/dq_des", 10);
+        obs_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/obs", 10);
+        frame_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/frame", 10);
         gate_pub_ = create_publisher<std_msgs::msg::String>("/sim2real/gate", 10);
 
         joint_sub_ = create_subscription<sensor_msgs::msg::JointState>(
             joint_state_topic_, 10, std::bind(&A1PolicyBridgeCpp::jointCb, this, std::placeholders::_1));
         ball_sub_ = create_subscription<std_msgs::msg::Float64MultiArray>(
             ball_state_topic_, 10, std::bind(&A1PolicyBridgeCpp::ballCb, this, std::placeholders::_1));
+        policy_enable_sub_ = create_subscription<std_msgs::msg::Bool>(
+            policy_enable_topic_, 10, std::bind(&A1PolicyBridgeCpp::policyEnableCb, this, std::placeholders::_1));
 
         const double period = 1.0 / std::max(control_hz_, 1e-6);
         timer_ = create_wall_timer(
@@ -458,13 +485,24 @@ public:
         publishEnable(enable_on_start_);
         RCLCPP_INFO(
             get_logger(),
-            "a1_policy_bridge_cpp ready: policy=%s predictor=%s joint_topic=%s ball_topic=%s action_topic=%s publish_actions=%s",
+            "a1_policy_bridge_cpp ready: policy=%s predictor=%s joint_topic=%s ball_topic=%s action_topic=%s publish_actions=%s publish_pv=%s servo_filter=%s servo_tau=%.3f servo_vel=%s qdes_slew=%s max_delta_per_tick=%s",
             policy_path_.c_str(),
             predictor_ ? predictor_path_.c_str() : "(disabled)",
             joint_state_topic_.c_str(),
             ball_state_topic_.c_str(),
             action_topic_.c_str(),
-            publish_actions_ ? "true" : "false");
+            publish_actions_ ? "true" : "false",
+            publishPositionVelocity() ? "true" : "false",
+            servo_filter_enabled_ ? "true" : "false",
+            servo_tau_s_,
+            vecToString(servo_velocity_limit_).c_str(),
+            qdes_slew_enabled_ ? "true" : "false",
+            vecToString(max_delta_per_tick_).c_str());
+        RCLCPP_INFO(
+            get_logger(),
+            "policy runtime gate: topic=%s enabled=%s",
+            policy_enable_topic_.c_str(),
+            policy_enabled_ ? "true" : "false");
     }
 
     ~A1PolicyBridgeCpp() override {
@@ -473,7 +511,8 @@ public:
 
 private:
     double nowSec() const {
-        return now().nanoseconds() * 1e-9;
+        return std::chrono::duration<double>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
     }
 
     bool stale(const std::optional<double>& stamp, double timeout_s) const {
@@ -501,6 +540,7 @@ private:
         last_joint_time_ = nowSec();
         if (!last_pub_q_.has_value()) {
             last_pub_q_ = q_;
+            resetServoFilter(q_);
             resetPolicy(q_);
         }
     }
@@ -528,9 +568,32 @@ private:
         last_ball_time_ = t;
     }
 
+    void policyEnableCb(const std_msgs::msg::Bool::SharedPtr msg) {
+        if (policy_enabled_ == msg->data) return;
+        policy_enabled_ = msg->data;
+        if (gate_) {
+            gate_->reset();
+        }
+        if (q_.has_value()) {
+            resetPolicy(q_);
+            last_pub_q_ = q_;
+            resetServoFilter(q_);
+        }
+        RCLCPP_INFO(
+            get_logger(),
+            "policy_enabled=%s; reset ball gate",
+            policy_enabled_ ? "true" : "false");
+    }
+
     void controlTick() {
         ++tick_;
         if (!q_.has_value()) return;
+        if (!policy_enabled_) {
+            if (diag_every_ > 0 && tick_ % diag_every_ == 0) {
+                RCLCPP_INFO(get_logger(), "tick=%ld policy disabled; suppressing policy action", tick_);
+            }
+            return;
+        }
         if (stale(last_joint_time_, joint_timeout_s_)) {
             if (disable_on_stale_joint_ && enabled_sent_) publishEnable(false);
             RCLCPP_WARN_THROTTLE(
@@ -551,6 +614,9 @@ private:
 
         try {
             if (ball_stale) {
+                if (gate_) {
+                    gate_->reset();
+                }
                 gate_out = gate_->update(nan3(), nan3());
                 if (hold_when_ball_stale_) {
                     resetPolicy(q_);
@@ -574,14 +640,12 @@ private:
             return;
         }
 
-        q_des = clampDelta(q_des);
-        const auto prev = last_pub_q_.value_or(q_.value());
-        for (size_t i = 0; i < 7; ++i) dq_des[i] = (q_des[i] - prev[i]) * control_hz_;
-        last_pub_q_ = q_des;
+        const auto raw_q_des = clampJointLimits(q_des);
+        q_des = commandFromRawQDes(raw_q_des, q_.value(), dq_des);
 
-        if (publish_actions_) {
+        if (publish_actions_ && policy_enabled_) {
             std_msgs::msg::Float64MultiArray msg;
-            if (publish_position_velocity_) {
+            if (publishPositionVelocity()) {
                 msg.data.resize(14);
                 for (size_t i = 0; i < 7; ++i) {
                     msg.data[i] = q_des[i];
@@ -593,7 +657,7 @@ private:
             action_pub_->publish(msg);
         }
 
-        publishDiag(raw_action, q_des, gate_out, ball_stale, ball_pred);
+        publishDiag(raw_action, raw_q_des, q_des, dq_des, gate_out, ball_stale, ball_pred);
     }
 
     struct PolicyStep {
@@ -609,6 +673,7 @@ private:
         const std::array<double, 3>& ball_vel,
         bool valid_ball) {
         const auto obs = observe(q, dq, ball_pos, ball_vel, valid_ball);
+        publishPolicyInputDiag(obs, last_frame_);
         const auto raw_vec = policy_->runSingle(obs);
         if (raw_vec.size() < 7) {
             throw std::runtime_error("policy output has fewer than 7 values");
@@ -668,6 +733,7 @@ private:
         if (o != static_cast<size_t>(kFrameSize)) {
             throw std::runtime_error("bad frame size");
         }
+        last_frame_ = frame;
         return frame;
     }
 
@@ -744,6 +810,14 @@ private:
         return q_des;
     }
 
+    std::array<double, 7> clampJointLimits(const std::array<double, 7>& q) const {
+        std::array<double, 7> out{};
+        for (size_t i = 0; i < 7; ++i) {
+            out[i] = clampDouble(q[i], q_min_[i], q_max_[i]);
+        }
+        return out;
+    }
+
     void resetPolicy(const std::optional<std::array<double, 7>>& q) {
         predictor_history_.clear();
         last_action_.fill(0.0f);
@@ -770,9 +844,60 @@ private:
         return out;
     }
 
+    void resetServoFilter(const std::optional<std::array<double, 7>>& q) {
+        servo_q_cmd_ = clampJointLimits(q.value_or(kDefaultRightQ));
+        servo_dq_cmd_.fill(0.0);
+        servo_filter_initialized_ = q.has_value();
+        last_pub_q_ = servo_q_cmd_;
+    }
+
+    std::array<double, 7> commandFromRawQDes(
+        const std::array<double, 7>& raw_q_des,
+        const std::array<double, 7>& measured_q,
+        std::array<double, 7>& dq_des) {
+        if (!servo_filter_enabled_) {
+            std::array<double, 7> cmd = qdes_slew_enabled_ ? clampDelta(raw_q_des) : raw_q_des;
+            const auto prev = last_pub_q_.value_or(measured_q);
+            for (size_t i = 0; i < 7; ++i) {
+                dq_des[i] = (cmd[i] - prev[i]) * control_hz_;
+            }
+            last_pub_q_ = cmd;
+            return cmd;
+        }
+
+        const double dt = 1.0 / std::max(control_hz_, 1e-6);
+        if (!servo_filter_initialized_) {
+            servo_q_cmd_ = clampJointLimits(measured_q);
+            servo_dq_cmd_.fill(0.0);
+            servo_filter_initialized_ = true;
+        }
+        const auto prev = servo_q_cmd_;
+        for (size_t i = 0; i < 7; ++i) {
+            const double desired_dq = (raw_q_des[i] - servo_q_cmd_[i]) / servo_tau_s_;
+            servo_dq_cmd_[i] = clampDouble(
+                desired_dq,
+                -std::abs(servo_velocity_limit_[i]),
+                std::abs(servo_velocity_limit_[i]));
+            servo_q_cmd_[i] += servo_dq_cmd_[i] * dt;
+        }
+        servo_q_cmd_ = clampJointLimits(servo_q_cmd_);
+        for (size_t i = 0; i < 7; ++i) {
+            servo_dq_cmd_[i] = (servo_q_cmd_[i] - prev[i]) / dt;
+            dq_des[i] = servo_dq_cmd_[i];
+        }
+        last_pub_q_ = servo_q_cmd_;
+        return servo_q_cmd_;
+    }
+
+    bool publishPositionVelocity() const {
+        return publish_position_velocity_ || servo_filter_enabled_;
+    }
+
     void publishDiag(
         const std::array<float, 7>& raw_action,
+        const std::array<double, 7>& raw_q_des,
         const std::array<double, 7>& q_des,
+        const std::array<double, 7>& dq_des,
         const BallGateOutput& gate_out,
         bool ball_stale,
         const std::array<float, 3>& ball_pred) {
@@ -785,6 +910,14 @@ private:
         q_msg.data.assign(q_des.begin(), q_des.end());
         q_des_pub_->publish(q_msg);
 
+        std_msgs::msg::Float64MultiArray raw_q_msg;
+        raw_q_msg.data.assign(raw_q_des.begin(), raw_q_des.end());
+        raw_q_des_pub_->publish(raw_q_msg);
+
+        std_msgs::msg::Float64MultiArray dq_msg;
+        dq_msg.data.assign(dq_des.begin(), dq_des.end());
+        dq_des_pub_->publish(dq_msg);
+
         std_msgs::msg::String gate_msg;
         std::ostringstream os;
         os.setf(std::ios::fixed);
@@ -793,6 +926,7 @@ private:
            << " live=" << (gate_out.live ? 1 : 0)
            << " reason=" << gate_out.reason
            << " first_bounce_x=" << gate_out.first_bounce_x
+           << " own_bounces=" << gate_out.own_bounces
            << " ball_stale=" << (ball_stale ? 1 : 0)
            << " pred=" << vecToString(ball_pred);
         gate_msg.data = os.str();
@@ -803,14 +937,30 @@ private:
             for (float v : raw_action) max_raw = std::max(max_raw, std::abs(v));
             RCLCPP_INFO(
                 get_logger(),
-                "tick=%ld gate=%d/%s q_des=%s raw_max=%.2f pred=%s",
+                "tick=%ld gate=%d/%s raw_q_des=%s q_des=%s dq_des=%s raw_max=%.2f pred=%s",
                 tick_,
                 gate_out.engaged ? 1 : 0,
                 gate_out.reason.c_str(),
+                vecToString(raw_q_des).c_str(),
                 vecToString(q_des).c_str(),
+                vecToString(dq_des).c_str(),
                 max_raw,
                 vecToString(ball_pred).c_str());
         }
+    }
+
+    void publishPolicyInputDiag(
+        const std::vector<float>& obs,
+        const std::array<float, kFrameSize>& frame) {
+        std_msgs::msg::Float64MultiArray obs_msg;
+        obs_msg.data.reserve(obs.size());
+        for (float v : obs) obs_msg.data.push_back(static_cast<double>(v));
+        obs_pub_->publish(obs_msg);
+
+        std_msgs::msg::Float64MultiArray frame_msg;
+        frame_msg.data.reserve(frame.size());
+        for (float v : frame) frame_msg.data.push_back(static_cast<double>(v));
+        frame_pub_->publish(frame_msg);
     }
 
     static std::array<double, 3> nan3() {
@@ -822,16 +972,21 @@ private:
     std::string predictor_path_;
     bool use_predictor_ = true;
     double control_hz_ = 50.0;
-    double joint_timeout_s_ = 0.25;
+    double joint_timeout_s_ = 2.0;
     double ball_timeout_s_ = 0.20;
     bool publish_actions_ = true;
     bool publish_position_velocity_ = false;
+    bool servo_filter_enabled_ = true;
+    double servo_tau_s_ = 0.25;
+    bool qdes_slew_enabled_ = false;
+    bool policy_enabled_ = false;
     bool enable_on_start_ = false;
     bool disable_on_stale_joint_ = true;
-    bool hold_when_ball_stale_ = true;
+    bool hold_when_ball_stale_ = false;
     int diag_every_ = 50;
     std::string action_topic_;
     std::string enable_topic_;
+    std::string policy_enable_topic_;
     std::string joint_state_topic_;
     std::string ball_state_topic_;
 
@@ -844,6 +999,7 @@ private:
     std::array<double, 7> q_max_{};
     std::array<float, 7> last_action_{};
     std::array<double, 7> last_q_des_{};
+    std::array<float, kFrameSize> last_frame_{};
     std::array<float, 3> last_ball_pred_ = kPredSentinel;
 
     std::optional<std::array<double, 7>> q_;
@@ -856,6 +1012,10 @@ private:
     std::optional<double> prev_ball_time_;
     std::optional<std::array<double, 7>> last_pub_q_;
     std::array<double, 7> max_delta_per_tick_{};
+    std::array<double, 7> servo_velocity_limit_ = kIsaacServoVelocityLimit;
+    std::array<double, 7> servo_q_cmd_ = kDefaultRightQ;
+    std::array<double, 7> servo_dq_cmd_{};
+    bool servo_filter_initialized_ = false;
     long tick_ = 0;
     bool enabled_sent_ = false;
 
@@ -863,9 +1023,14 @@ private:
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr enable_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr raw_action_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr q_des_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr raw_q_des_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr dq_des_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr obs_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr frame_pub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr gate_pub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr ball_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr policy_enable_sub_;
     rclcpp::TimerBase::SharedPtr timer_;
 };
 

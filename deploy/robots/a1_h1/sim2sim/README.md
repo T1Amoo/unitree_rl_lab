@@ -67,11 +67,11 @@ conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py --headless-steps 5
 
 - Scene MJCF: `sim2sim/scene/a1_tt_scene.xml`
 - Source URDF: `/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/legged_lab/assets/a1/X1_URDF_V1_1/urdf/X1_URDF_V1_1.urdf`
-- Policy ONNX: `/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v9/2026-07-07_02-50-16/exported/policy.onnx`
+- Policy ONNX: `/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx`
 - Control: 50 Hz policy, 500 Hz MuJoCo physics
 - Action: `q_des = default_q + clip(raw_action, +/-10) * 0.25`
 - Training torque limits: r1-r3 `28 Nm`, r4-r7 `8 Nm`
-- MJCF DAMIAO actuator ranges: r1-r4 `28 Nm`, r5-r7 `10 Nm`
+- MJCF DAMIAO actuator ranges: r1-r3 `28 Nm`, r4-r7 `10 Nm`
 
 If `predictor.onnx` exists next to `policy.onnx`, the runner uses it for the
 5-frame ball prediction path and falls back to the analytic hit-plane predictor

@@ -74,6 +74,10 @@ datasets
 *_bak
 deploy/robots/*/_*_build_backup/
 deploy/robots/*/sim2sim/diag_logs/
+deploy/robots/*/install/
+deploy/robots/*/log/
+deploy/robots/*/*/install/
+deploy/robots/*/*/log/
 
 # Mimic
 *.npz

@@ -126,7 +126,7 @@
               <geom type="mesh" rgba="0.898039 0.917647 0.929412 1" mesh="Link_r3" />
               <body name="Link_r4" pos="0.000100454 0 0.112" quat="0.5 0.5 0.5 0.5">
                 <inertial pos="2.42491e-07 0.0713398 -0.00581847" quat="0.320776 0.63017 -0.630149 0.32078" mass="0.490016" diaginertia="0.000296668 0.000269915 0.000223875" />
-                <joint name="r4" pos="0 0 0" axis="0 0 -1" range="-1.92 1.92" armature="0.0018" damping="0.02" frictionloss="0" actuatorfrcrange="-28 28" />
+                <joint name="r4" pos="0 0 0" axis="0 0 -1" range="-1.92 1.92" armature="0.0018" damping="0.02" frictionloss="0" actuatorfrcrange="-10 10" />
                 <geom type="mesh" rgba="1 1 1 1" mesh="Link_r4" />
                 <body name="Link_r5" pos="0 0.111 -0.000100454" quat="0.707107 -0.707107 0 0">
                   <inertial pos="0.000851641 9.37864e-05 0.0873055" quat="0.999746 -0.0224734 -0.00150532 -0.000642835" mass="0.49731" diaginertia="0.000369458 0.000354314 0.000225287" />
@@ -202,7 +202,7 @@
     <motor name="r1_motor" joint="r1" ctrllimited="true" ctrlrange="-28 28" />
     <motor name="r2_motor" joint="r2" ctrllimited="true" ctrlrange="-28 28" />
     <motor name="r3_motor" joint="r3" ctrllimited="true" ctrlrange="-28 28" />
-    <motor name="r4_motor" joint="r4" ctrllimited="true" ctrlrange="-28 28" />
+    <motor name="r4_motor" joint="r4" ctrllimited="true" ctrlrange="-10 10" />
     <motor name="r5_motor" joint="r5" ctrllimited="true" ctrlrange="-10 10" />
     <motor name="r6_motor" joint="r6" ctrllimited="true" ctrlrange="-10 10" />
     <motor name="r7_motor" joint="r7" ctrllimited="true" ctrlrange="-10 10" />

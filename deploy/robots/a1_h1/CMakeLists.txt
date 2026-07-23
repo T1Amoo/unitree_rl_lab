@@ -3,6 +3,7 @@ project(sim2real_bridge_cpp)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
@@ -32,12 +33,28 @@ ament_target_dependencies(a1_policy_bridge_cpp
   std_msgs
 )
 
+add_executable(a1_vrpn_ball_state_bridge src/a1_vrpn_ball_state_bridge.cpp)
+target_compile_features(a1_vrpn_ball_state_bridge PRIVATE cxx_std_17)
+ament_target_dependencies(a1_vrpn_ball_state_bridge
+  rclcpp
+  geometry_msgs
+  std_msgs
+)
+
+add_executable(a1_tt_fsm_supervisor src/a1_tt_fsm_supervisor.cpp)
+target_compile_features(a1_tt_fsm_supervisor PRIVATE cxx_std_17)
+ament_target_dependencies(a1_tt_fsm_supervisor
+  rclcpp
+  sensor_msgs
+  std_msgs
+)
+
 set_target_properties(a1_policy_bridge_cpp PROPERTIES
   BUILD_RPATH "${ONNXRUNTIME_ROOT}/lib"
   INSTALL_RPATH "${ONNXRUNTIME_ROOT}/lib"
 )
 
-install(TARGETS a1_policy_bridge_cpp
+install(TARGETS a1_policy_bridge_cpp a1_vrpn_ball_state_bridge a1_tt_fsm_supervisor
   DESTINATION lib/${PROJECT_NAME}
 )
 install(DIRECTORY launch

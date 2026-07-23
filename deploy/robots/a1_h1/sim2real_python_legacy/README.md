@@ -61,7 +61,7 @@ joint feedback, ball gate, policy output, and diagnostics:
 ros2 launch sim2real_bridge a1_policy_bridge.launch.py \
   start_arm_control:=true \
   publish_actions:=false \
-  policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v11/2026-07-07_10-48-31/exported/policy.onnx
+  policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx
 ```
 
 Watch diagnostics:
@@ -98,7 +98,7 @@ ros2 topic pub --rate 50 /ball/state std_msgs/msg/Float64MultiArray \
 
 - The bridge runs the same observation contract as `sim2sim/policy_io.py`:
   5-frame history, 50 Hz control, fixed invalid-ball sentinel, fixed
-  `hit_plane_x=-1.55`.
+  `hit_plane_x=-1.60`.
 - Ball coordinates must already be transformed into the training table frame:
   robot/table origin conventions are the same as sim2sim.
 - If ball state is stale, the bridge holds current joint positions by default

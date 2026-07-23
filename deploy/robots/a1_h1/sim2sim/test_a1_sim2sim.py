@@ -5,10 +5,20 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from a1_scene import RIGHT_ARM_EFFORT_LIMITS, RIGHT_ARM_JOINTS, ball_addresses, build_scene_xml, load_scene
+from a1_scene import PHYSICS_DT, RIGHT_ARM_EFFORT_LIMITS, RIGHT_ARM_JOINTS, ball_addresses, build_scene_xml, load_scene
 from ball_gate import BallValidityGate
 from policy_io import PRED_SENTINEL
-from policy_io import A1PolicyIO, DEFAULT_POLICY, EFFORT, OBS_SIZE, OnnxPolicy
+from policy_io import (
+    A1PolicyIO,
+    BRIDGE_MAX_DELTA_PER_TICK,
+    DEFAULT_POLICY,
+    DEFAULT_RIGHT_Q,
+    EFFORT,
+    FittedSecondOrderActionResponse,
+    OBS_SIZE,
+    OnnxPolicy,
+    REAL_RESPONSE_MAX_DELTA_PER_TICK,
+)
 from run_a1_tt_sim2sim import parse_args, run
 from serve import BOUNCE_X, BOUNCE_VZ, SERVE_Y_CENTER, SERVE_Y_HALF, Serve
 
@@ -56,8 +66,31 @@ def test_mit_pd_torque_is_clipped_to_motor_limits():
     data.qfrc_applied[:] = 0.0
     tau = io.apply_mit_pd()
     assert np.all(np.abs(tau) <= EFFORT + 1e-6)
-    assert np.isclose(np.max(np.abs(tau[:3])), 28.0)
-    assert np.isclose(np.max(np.abs(tau[3:])), 8.0)
+    assert np.isclose(np.max(np.abs(tau[:4])), 28.0)
+    assert np.isclose(np.max(np.abs(tau[4:])), 8.0)
+
+
+def test_bridge_qdes_delta_limit_matches_deploy_envelope():
+    model, data, _ = load_scene()
+    io = A1PolicyIO(model, data)
+    q_des = io.update_action(np.full(7, 100.0, dtype=np.float32), max_delta_per_tick=BRIDGE_MAX_DELTA_PER_TICK)
+    assert np.allclose(q_des, DEFAULT_RIGHT_Q + BRIDGE_MAX_DELTA_PER_TICK)
+    q_des = io.update_action(np.full(7, -100.0, dtype=np.float32), max_delta_per_tick=BRIDGE_MAX_DELTA_PER_TICK)
+    assert np.allclose(q_des, DEFAULT_RIGHT_Q)
+
+
+def test_real_response_model_smooths_limited_qdes_step():
+    response = FittedSecondOrderActionResponse(PHYSICS_DT, DEFAULT_RIGHT_Q)
+    command = DEFAULT_RIGHT_Q + REAL_RESPONSE_MAX_DELTA_PER_TICK
+    prev = response.response.copy()
+    max_step = 0.0
+    for _ in range(10):
+        current = response.step(command)
+        max_step = max(max_step, float(np.max(np.abs(current - prev))))
+        prev = current.copy()
+    assert np.isfinite(response.response).all()
+    assert max_step < float(np.max(REAL_RESPONSE_MAX_DELTA_PER_TICK))
+    assert np.max(np.abs(response.response - DEFAULT_RIGHT_Q)) < float(np.max(REAL_RESPONSE_MAX_DELTA_PER_TICK))
 
 
 def test_serve_bounce_sampler_ranges():
@@ -83,7 +116,7 @@ def test_ball_gate_accepts_valid_serve_and_rejects_invalid_ball():
     assert out.reason == "valid"
     assert -1.37 <= out.first_bounce_x <= 0.0
 
-    out = gate.update(np.array([-1.65, 0.0, 1.0]), np.array([-2.0, 0.0, 0.0]))
+    out = gate.update(np.array([-1.66, 0.0, 1.0]), np.array([-2.0, 0.0, 0.0]))
     assert not out.engaged
     assert out.reason == "behind_hit_plane"
 

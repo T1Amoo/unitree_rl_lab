@@ -21,6 +21,8 @@ from .policy_runtime import (
     ordered_joint_vector,
 )
 
+BRIDGE_MAX_DELTA_PER_TICK = [0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]
+
 
 def _bool_param(node: Node, name: str, default: bool) -> bool:
     value = node.declare_parameter(name, default).value
@@ -50,14 +52,14 @@ class A1PolicyBridge(Node):
         self.publish_position_velocity = _bool_param(self, "publish_position_velocity", False)
         self.enable_on_start = _bool_param(self, "enable_on_start", False)
         self.disable_on_stale_joint = _bool_param(self, "disable_on_stale_joint", True)
-        self.hold_when_ball_stale = _bool_param(self, "hold_when_ball_stale", True)
+        self.hold_when_ball_stale = _bool_param(self, "hold_when_ball_stale", False)
         self.diag_every = int(self.declare_parameter("diag_every", 50).value)
         self.action_topic = str(self.declare_parameter("action_topic", "/model_action").value)
         self.enable_topic = str(self.declare_parameter("enable_topic", "/model_control/enable").value)
         self.joint_state_topic = str(self.declare_parameter("joint_state_topic", "/right_joint_states").value)
         self.ball_state_topic = str(self.declare_parameter("ball_state_topic", "/ball/state").value)
         self.max_delta_per_tick = np.asarray(
-            _double_array_param(self, "max_delta_per_tick", [0.0] * 7),
+            _double_array_param(self, "max_delta_per_tick", BRIDGE_MAX_DELTA_PER_TICK),
             dtype=np.float64,
         )
         if self.max_delta_per_tick.shape != (7,):
@@ -102,6 +104,10 @@ class A1PolicyBridge(Node):
             self.action_topic,
             self.publish_actions,
             self.enable_on_start,
+        )
+        self.get_logger().info(
+            "max_delta_per_tick=%s",
+            np.round(self.max_delta_per_tick, 3).tolist(),
         )
 
     def now_sec(self) -> float:

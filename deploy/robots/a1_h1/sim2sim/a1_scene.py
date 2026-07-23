@@ -38,14 +38,15 @@ PHYSICS_DT = 0.002
 RIGHT_ARM_JOINTS = [f"r{i}" for i in range(1, 8)]
 
 # DAMIAO command envelope from h1_pingpong/src/armcontrol:
-# r1-r4 are DM4340, r5-r7 are DM4310. These ranges are not a complete motor
-# dynamics model; they are the same actuator-force metadata Unitree keeps in
-# MJCF instead of URDF.
+# h1_pingpong/src/armcontrol/src/inference_arm_control_node.cpp initializes the
+# A1 right arm as r1-r3 DM4340_48V and r4-r7 DM4310_48V. These ranges are not
+# a complete motor dynamics model; they are the same actuator-force metadata
+# Unitree keeps in MJCF instead of URDF.
 RIGHT_ARM_EFFORT_LIMITS = {
     "r1": 28.0,
     "r2": 28.0,
     "r3": 28.0,
-    "r4": 28.0,
+    "r4": 10.0,
     "r5": 10.0,
     "r6": 10.0,
     "r7": 10.0,
@@ -66,7 +67,9 @@ RIGHT_ARM_DAMPING = 0.02
 RIGHT_ARM_FRICTIONLOSS = 0.0
 
 DEFAULT_QPOS = {
-    "sj": -0.28,
+    # v13 training matches the measured real r1 centerline height of 1.15 m.
+    # X1_URDF_V1_1 gives sj ~= 1.15 - (0.0282 + 1.2107 + 0.025) = -0.1139.
+    "sj": -0.1139,
     "r1": 0.569,
     "r2": -0.692,
     "r3": 0.717,

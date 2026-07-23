@@ -17,7 +17,7 @@ def _guess_lgy_root() -> Path:
 
 DEFAULT_POLICY = (
     _guess_lgy_root()
-    / "Pingpong_TTRL/logs/a1_tt_v11/2026-07-07_10-48-31/exported/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx"
 )
 
 
@@ -39,7 +39,7 @@ def generate_launch_description():
             DeclareLaunchArgument("publish_position_velocity", default_value="false"),
             DeclareLaunchArgument("enable_on_start", default_value="false"),
             DeclareLaunchArgument("enable_motors_on_start", default_value="false"),
-            DeclareLaunchArgument("right_arm_device", default_value="/dev/ttyCANR"),
+            DeclareLaunchArgument("right_arm_device", default_value="/dev/ttyACM1"),
             DeclareLaunchArgument("ball_state_topic", default_value="/ball/state"),
             Node(
                 package="armcontrol",
@@ -59,8 +59,15 @@ def generate_launch_description():
                         "enable_motors_on_start": ParameterValue(enable_motors_on_start, value_type=bool),
                         "publish_joint_states": True,
                         "action_format": "auto",
-                        "interpolation_mode": "hermite",
+                        "interpolation_mode": "linear",
                         "action_timeout_s": 0.15,
+                        "kps": [200.0, 200.0, 200.0, 120.0, 120.0, 120.0, 120.0],
+                        "kds": [3.5, 3.5, 3.5, 1.0, 1.0, 1.0, 1.0],
+                        "torque_ff_scale": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "enable_mit_velocity": False,
+                        "max_vel": [8.0, 8.0, 8.0, 30.0, 30.0, 30.0, 30.0],
+                        "max_acc": [80.0, 80.0, 80.0, 160.0, 160.0, 160.0, 160.0],
+                        "max_delta_per_cycle": [0.08, 0.08, 0.08, 0.16, 0.16, 0.16, 0.16],
                     }
                 ],
             ),
@@ -80,7 +87,8 @@ def generate_launch_description():
                         "publish_actions": ParameterValue(publish_actions, value_type=bool),
                         "publish_position_velocity": ParameterValue(publish_position_velocity, value_type=bool),
                         "enable_on_start": ParameterValue(enable_on_start, value_type=bool),
-                        "hold_when_ball_stale": True,
+                        "hold_when_ball_stale": False,
+                        "max_delta_per_tick": [0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160],
                     }
                 ],
             ),

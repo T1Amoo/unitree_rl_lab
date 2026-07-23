@@ -8,6 +8,8 @@ vendored ONNX Runtime used by `unitree_rl_lab`:
 
 ```text
 policy.onnx -> C++ OrtRunner -> q_des[7] -> /model_action -> inference_arm_control_node -> DAMIAO control_mit(...)
+                                      ^
+                                      gated by a1_tt_fsm_supervisor
 ```
 
 ## Interfaces
@@ -27,6 +29,11 @@ Outputs:
   publishes 14 values: `q_des[7] + dq_des[7]`.
 - `/model_control/enable` (`std_msgs/msg/Bool`): bridge sends `false` on
   startup unless `enable_on_start:=true`.
+- `/a1_tt/fsm_command` (`std_msgs/msg/String`): `fixstand`, `table_tennis`,
+  or `passive`. The joystick mapping is `27` -> FixStand/Ready, `28` ->
+  TableTennis, `21` -> Passive.
+- `/a1_tt/policy_enable` (`std_msgs/msg/Bool`): runtime policy gate owned by
+  the FSM supervisor. The policy bridge defaults this gate to false.
 - `/sim2real/raw_action`, `/sim2real/q_des`, `/sim2real/gate`: diagnostics.
 
 ## Build
@@ -84,14 +91,15 @@ ros2 run armcontrol inference_arm_control_node --ros-args \
   -p enable_topic:=/model_control/enable \
   -p servo_enabled_on_start:=false \
   -p enable_motors_on_start:=false \
-  -p right_arm_device:=/dev/ttyCANR
+  -p right_arm_device:=/dev/ttyACM1
 ```
 
-Dry-run the bridge from `unitree_rl_lab`. This does not publish `/model_action`:
+Dry-run the bridge from `unitree_rl_lab`. This computes diagnostics but does
+not publish `/model_action`:
 
 ```bash
 cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
-PUBLISH_ACTIONS=false bash sim2sim/run_deploy.sh
+POLICY_ENABLED=true PUBLISH_ACTIONS=false bash sim2sim/run_deploy.sh
 ```
 
 Watch diagnostics in another terminal:
@@ -105,20 +113,23 @@ Then enable action publishing while keeping motor control disabled:
 
 ```bash
 cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
-PUBLISH_ACTIONS=true bash sim2sim/run_deploy.sh
+POLICY_ENABLED=true PUBLISH_ACTIONS=true bash sim2sim/run_deploy.sh
 ```
 
-Enable motor control only after `/right_joint_states`, `/ball/state`,
-`/sim2real/q_des`, and `/model_action` are sane:
+For real bring-up, run the FSM supervisor and use it instead of directly
+publishing `/model_control/enable=true`:
 
 ```bash
-ros2 topic pub --once /model_control/enable std_msgs/msg/Bool "{data: true}"
+./build/a1_tt_fsm_supervisor
+ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: fixstand}"
+ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: table_tennis}"
+ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: passive}"
 ```
 
 ## Notes
 
 - Observation/action semantics match `sim2sim/policy_io.py`: 5-frame history,
-  195-dim actor input, fixed invalid-ball sentinel, fixed `hit_plane_x=-1.55`,
+  195-dim actor input, fixed invalid-ball sentinel, fixed `hit_plane_x=-1.60`,
   and `q_des = default_q + clip(raw_action, +/-10) * 0.25`.
 - If the ball is stale, the bridge holds the current measured joint pose and
   resets policy/predictor history.
