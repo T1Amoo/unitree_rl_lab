@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-07-25-a1-sim2sim-damiao-mit-fidelity.md
+  s_88e8ffb3462b74::t_41b4ae8d48667f 1-404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "857238cf55e0e0c3fdc1e82a84d6361f13f20b7a",
+  "prompts": {},
+  "sessions": {
+    "s_88e8ffb3462b74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46353d23-4af8-41a7-8834-f85b3864fa5c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
