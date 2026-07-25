@@ -168,3 +168,20 @@ def test_damiao_clip_effort_torque_speed_envelope():
     out3 = damiao_clip_effort(tau3, dq3, vel_limit, effort_limit, brake)
     assert out3[0] == -14.0   # 加速方向受限
     assert out3[1] == 28.0    # 正向刹车用 brake
+
+
+def test_damiao_slew_limits_per_step_delta():
+    from policy_io import damiao_slew
+    vel_limit = np.array([8, 8, 8, 20, 20, 20, 20], dtype=np.float64)
+    dt = 0.002
+    cmd = np.zeros(7, dtype=np.float64)
+    # 目标远大于 max_delta=vel_limit*dt=[0.016,...,0.04,...]
+    q_des = np.ones(7, dtype=np.float64)
+    out = damiao_slew(cmd, q_des, vel_limit, dt)
+    np.testing.assert_allclose(out[:3], 0.016)   # 8*0.002
+    np.testing.assert_allclose(out[3:], 0.040)   # 20*0.002
+    # 目标在步长内则直达
+    cmd2 = np.zeros(7, dtype=np.float64)
+    q_des2 = np.full(7, 0.001, dtype=np.float64)
+    out2 = damiao_slew(cmd2, q_des2, vel_limit, dt)
+    np.testing.assert_allclose(out2, 0.001)

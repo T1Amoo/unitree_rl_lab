@@ -141,6 +141,13 @@ def damiao_clip_effort(tau, dq, vel_limit, effort_limit, brake_effort_limit):
     return np.clip(tau, tau_min, tau_max)
 
 
+def damiao_slew(cmd, q_des, vel_limit, dt):
+    """Mirror DamiaoMIT._apply_command_slew (response/lead/delay are identity in v7)."""
+    max_delta = vel_limit * dt
+    delta = q_des - cmd
+    return cmd + np.clip(delta, -max_delta, max_delta)
+
+
 class OnnxPolicy:
     def __init__(self, policy_path: Path | str = DEFAULT_POLICY):
         self.path = Path(policy_path)
