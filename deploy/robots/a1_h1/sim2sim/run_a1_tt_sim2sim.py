@@ -343,7 +343,7 @@ def run(args: argparse.Namespace) -> dict:
         return DAMIAO_EFFORT if args.actuator_mode == "real_deploy_preview" else EFFORT
 
     def velocity_limit() -> np.ndarray | None:
-        if args.no_qvel_clip:
+        if args.no_qvel_clip or args.actuator_mode == "damiao_mit":
             return None
         if args.actuator_mode == "real_deploy_preview":
             return DAMIAO_DQ_LIMIT
@@ -580,7 +580,9 @@ def run(args: argparse.Namespace) -> dict:
             stats["max_abs_motor_qdes_speed"],
             float(np.max(np.abs(motor_delta)) / PHYSICS_DT),
         )
-        if args.actuator_mode in ("torque_chain", "real_deploy_preview"):
+        if args.actuator_mode == "damiao_mit":
+            tau = io.apply_damiao_mit(PHYSICS_DT)
+        elif args.actuator_mode in ("torque_chain", "real_deploy_preview"):
             tau = io.apply_mit_pd(effort_limit())
         elif args.actuator_mode == "direct_response":
             tau = io.estimate_mit_tau(effort_limit())
@@ -754,7 +756,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     ap.add_argument(
         "--actuator-mode",
-        choices=["isaac_approx", "direct_response", "torque_chain", "real_deploy_preview"],
+        choices=["isaac_approx", "direct_response", "torque_chain", "real_deploy_preview", "damiao_mit"],
         default="isaac_approx",
         help="Actuator model: visual Isaac approximation, direct second-order response, training torque chain, or DAMIAO real-deploy preview.",
     )
