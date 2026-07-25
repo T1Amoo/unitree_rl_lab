@@ -1,0 +1,21 @@
+deploy/robots/a1_h1/sim2sim/test_a1_sim2sim.py
+  s_88e8ffb3462b74::t_54ef58c745b4ff 171-187
+deploy/robots/a1_h1/sim2sim/policy_io.py
+  s_88e8ffb3462b74::t_3c88ad43be59be 144-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2a66bbce65828c5eb994491baf2cda61da0bd510",
+  "prompts": {},
+  "sessions": {
+    "s_88e8ffb3462b74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46353d23-4af8-41a7-8834-f85b3864fa5c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
