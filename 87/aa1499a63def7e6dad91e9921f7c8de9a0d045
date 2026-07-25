@@ -1,0 +1,23 @@
+deploy/robots/a1_h1/sim2sim/compare_isaac_vs_mujoco.py
+  s_88e8ffb3462b74::t_9982ca529b2067 1-155
+deploy/robots/a1_h1/sim2sim/gen_chirp_qdes.py
+  s_88e8ffb3462b74::t_fcfd5efdb2ce49 1-171
+deploy/robots/a1_h1/sim2sim/replay_qdes_damiao_mit.py
+  s_88e8ffb3462b74::t_7a94383b207291 1-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "87aa1499a63def7e6dad91e9921f7c8de9a0d045",
+  "prompts": {},
+  "sessions": {
+    "s_88e8ffb3462b74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46353d23-4af8-41a7-8834-f85b3864fa5c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
