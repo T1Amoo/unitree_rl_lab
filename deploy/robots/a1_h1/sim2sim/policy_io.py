@@ -129,6 +129,18 @@ HIT_BODY_HEIGHT = 0.028
 PRED_SENTINEL = np.array([HIT_PLANE_X, HOME_Y + PADDLE_Y_OFFSET, HIT_BODY_HEIGHT + 0.2], dtype=np.float32)
 
 
+def damiao_clip_effort(tau, dq, vel_limit, effort_limit, brake_effort_limit):
+    """Mirror DamiaoMIT._clip_effort (torque_speed_limit_enable=True)."""
+    vl = np.maximum(vel_limit, 1.0e-6)
+    speed_scale = np.clip(1.0 - np.abs(dq) / vl, 0.0, 1.0)
+    accel_limit = effort_limit * speed_scale
+    brake_limit = np.maximum(brake_effort_limit, effort_limit)
+    tau_max = np.where(dq > 0.0, accel_limit, brake_limit)
+    neg_abs_limit = np.where(dq < 0.0, accel_limit, brake_limit)
+    tau_min = -neg_abs_limit
+    return np.clip(tau, tau_min, tau_max)
+
+
 class OnnxPolicy:
     def __init__(self, policy_path: Path | str = DEFAULT_POLICY):
         self.path = Path(policy_path)

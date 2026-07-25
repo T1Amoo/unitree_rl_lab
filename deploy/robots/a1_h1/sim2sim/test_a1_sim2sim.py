@@ -138,3 +138,33 @@ def test_short_headless_rollout_without_policy():
     assert stats["control_steps"] == 5
     assert stats["steps"] == 50
     assert stats["max_abs_tau"] <= 28.0 + 1e-6
+
+
+def test_damiao_clip_effort_torque_speed_envelope():
+    from policy_io import damiao_clip_effort
+    vel_limit = np.array([8, 8, 8, 20, 20, 20, 20], dtype=np.float64)
+    effort_limit = np.array([28, 28, 28, 8, 8, 8, 8], dtype=np.float64)
+    brake = effort_limit.copy()
+
+    # 静止(dq=0): 两侧都用 brake_limit=effort_limit
+    tau = np.array([100, -100, 0, 100, -100, 0, 5], dtype=np.float64)
+    dq0 = np.zeros(7, dtype=np.float64)
+    out = damiao_clip_effort(tau, dq0, vel_limit, effort_limit, brake)
+    np.testing.assert_allclose(out, np.array([28, -28, 0, 8, -8, 0, 5], dtype=np.float64))
+
+    # 正速度且加速方向(tau>0): 受 speed_scale 限制; 反向(刹车)用 brake
+    # r1: dq=4, vel_limit=8 -> speed_scale=0.5 -> accel_limit=14; 加速 tau=100 -> 14
+    # r2: dq=4 -> 反向 tau=-100 -> -brake=-28
+    dq = np.array([4, 4, 0, 0, 0, 0, 0], dtype=np.float64)
+    tau2 = np.array([100, -100, 0, 0, 0, 0, 0], dtype=np.float64)
+    out2 = damiao_clip_effort(tau2, dq, vel_limit, effort_limit, brake)
+    assert out2[0] == 14.0
+    assert out2[1] == -28.0
+
+    # 负速度: 加速方向是负, 正向是刹车
+    # r1: dq=-4 -> speed_scale=0.5 -> accel_limit=14; tau=-100(加速) -> -14;
+    dq3 = np.array([-4, -4, 0, 0, 0, 0, 0], dtype=np.float64)
+    tau3 = np.array([-100, 100, 0, 0, 0, 0, 0], dtype=np.float64)
+    out3 = damiao_clip_effort(tau3, dq3, vel_limit, effort_limit, brake)
+    assert out3[0] == -14.0   # 加速方向受限
+    assert out3[1] == 28.0    # 正向刹车用 brake
