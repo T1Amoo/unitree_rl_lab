@@ -185,3 +185,25 @@ def test_damiao_slew_limits_per_step_delta():
     q_des2 = np.full(7, 0.001, dtype=np.float64)
     out2 = damiao_slew(cmd2, q_des2, vel_limit, dt)
     np.testing.assert_allclose(out2, 0.001)
+
+
+def test_apply_damiao_mit_torque_signs_and_limit(tmp_path):
+    # 用现有 scene 构建一个 io，验证力矩方向与受限
+    import mujoco
+    from a1_scene import build_scene_xml, load_scene
+    from policy_io import A1PolicyIO, DAMIAO_MIT_EFFORT
+    # Adaptation: load_scene returns (model, data, path); use use_predictor=False
+    # instead of non-existent policy= kwarg.
+    model, data, _ = load_scene(build_scene_xml())
+    io = A1PolicyIO(model, data, use_predictor=False)
+    q = io.right_q()
+    # 目标设在当前位置 +0.5rad(远超步长)，期望力矩为正且不超 effort_limit
+    io.q_des = (q + 0.5).astype(np.float64)
+    io.damiao_cmd = q.copy()
+    tau = io.apply_damiao_mit(0.002)
+    assert tau.shape == (7,)
+    assert np.all(tau >= -DAMIAO_MIT_EFFORT - 1e-9)
+    assert np.all(tau <= DAMIAO_MIT_EFFORT + 1e-9)
+    assert tau[0] > 0.0   # 目标在正方向 -> 正力矩
+    # qfrc_applied 已写入
+    assert np.allclose(data.qfrc_applied[io.dof_addr], tau)

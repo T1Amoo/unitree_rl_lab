@@ -122,6 +122,16 @@ REAL_RESPONSE_BIAS_RAD = np.array(
 )
 DEFAULT_RIGHT_Q = np.array([DEFAULT_QPOS[j] for j in RIGHT_ARM_JOINTS], dtype=np.float64)
 
+# Training-matched DamiaoMIT constants (A1_TT_REAL_TORQUE_ONLY_CFG).
+# r1-r3 = DM4340_48V (idx<3), r4-r7 = DM4310_48V (idx>=3).
+DAMIAO_MIT_KP = np.array([300.0, 300.0, 300.0, 120.0, 120.0, 120.0, 120.0], dtype=np.float64)
+DAMIAO_MIT_KD = np.array([3.5, 3.5, 3.5, 1.0, 1.0, 1.0, 1.0], dtype=np.float64)
+# effort r1-3=28, r4-7=8 (training _EFFORT: idx<3 -> 28 else 8).
+DAMIAO_MIT_EFFORT = np.array([28.0, 28.0, 28.0, 8.0, 8.0, 8.0, 8.0], dtype=np.float64)
+# velocity_limit training _VEL: idx<3 -> 8 else 20.
+DAMIAO_MIT_VEL = np.array([8.0, 8.0, 8.0, 20.0, 20.0, 20.0, 20.0], dtype=np.float64)
+DAMIAO_MIT_BRAKE_EFFORT = DAMIAO_MIT_EFFORT.copy()
+
 HIT_PLANE_X = -1.60
 HOME_Y = 0.76
 PADDLE_Y_OFFSET = -0.66
@@ -277,6 +287,7 @@ class A1PolicyIO:
         )
         self.history = deque(maxlen=HISTORY)
         self.servo_q = self.right_q()
+        self.damiao_cmd = self.right_q()
         self.servo_dq = np.zeros(len(RIGHT_ARM_JOINTS), dtype=np.float64)
         self.last_ball_pred = PRED_SENTINEL.copy()
         frame = self.compute_frame(np.zeros(3), np.zeros(3), valid_ball=False)
@@ -306,6 +317,7 @@ class A1PolicyIO:
         self.data.qpos[self.qpos_addr] = q
         self.data.qvel[self.dof_addr] = dq
         self.servo_q = q.copy()
+        self.damiao_cmd = q.copy()
         self.servo_dq = dq.copy()
         if reset_targets:
             self.last_action.fill(0.0)
@@ -443,6 +455,20 @@ class A1PolicyIO:
 
     def apply_mit_pd(self, effort_limit: np.ndarray | None = None) -> np.ndarray:
         tau = self.estimate_mit_tau(effort_limit)
+        self.data.qfrc_applied[self.dof_addr] += tau
+        return tau
+
+    def apply_damiao_mit(self, dt: float) -> np.ndarray:
+        """Faithful mujoco replica of the training DamiaoMIT torque chain.
+
+        Mirrors DamiaoMIT.compute for A1_TT_REAL_TORQUE_ONLY_CFG:
+        slew(_VEL) -> MIT-PD (desired_vel=0, no gravity ff) -> torque-speed clip.
+        """
+        q = self.data.qpos[self.qpos_addr]
+        dq = self.data.qvel[self.dof_addr]
+        self.damiao_cmd = damiao_slew(self.damiao_cmd, self.q_des, DAMIAO_MIT_VEL, dt)
+        tau = DAMIAO_MIT_KP * (self.damiao_cmd - q) + DAMIAO_MIT_KD * (0.0 - dq)
+        tau = damiao_clip_effort(tau, dq, DAMIAO_MIT_VEL, DAMIAO_MIT_EFFORT, DAMIAO_MIT_BRAKE_EFFORT)
         self.data.qfrc_applied[self.dof_addr] += tau
         return tau
 
