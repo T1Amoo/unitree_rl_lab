@@ -740,11 +740,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--servo-tau", type=float, default=0.25, help="First-order visual servo time constant in seconds.")
     ap.add_argument("--fast-servo", action="store_true", help="Use the training hard velocity limits for the visual servo.")
     ap.add_argument("--bridge-qdes-limit", action="store_true", help="Apply the sim2real bridge max_delta_per_tick limit to policy q_des.")
-    ap.add_argument("--action-lowpass", action="store_true", help="Apply the training action_target first-order low-pass (v10) to q_des instead of the bang-bang max_delta clamp. Removes the underdamped-plant jitter.")
+    ap.add_argument(
+        "--action-lowpass",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Apply the training action_target per-joint first-order low-pass to q_des instead of the bang-bang max_delta clamp. ON by default (training-aligned); use --no-action-lowpass to revert to the bang-bang clamp.",
+    )
     ap.add_argument(
         "--real-response-model",
-        action="store_true",
-        help="Apply the A1 real-training q_des slew limiter and fitted second-order joint response.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Apply the A1 real-training q_des slew limiter and fitted second-order joint response. ON by default (training-aligned); use --no-real-response-model to disable.",
     )
     ap.add_argument(
         "--max-delta-per-tick",
@@ -760,8 +766,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument(
         "--actuator-mode",
         choices=["isaac_approx", "direct_response", "torque_chain", "real_deploy_preview", "damiao_mit"],
-        default="isaac_approx",
-        help="Actuator model: visual Isaac approximation, direct second-order response, training torque chain, or DAMIAO real-deploy preview.",
+        default="direct_response",
+        help="Actuator model: visual Isaac approximation, direct second-order response (default, training-aligned), training torque chain, or DAMIAO real-deploy preview.",
     )
     ap.add_argument("--dynamic-pd", action="store_true", help="Use explicit MIT-PD torques instead of the stable position-servo sim2sim actuator.")
     ap.add_argument("--real-deploy-preview", dest="actuator_mode", action="store_const", const="real_deploy_preview", help="Alias for --actuator-mode real_deploy_preview.")
