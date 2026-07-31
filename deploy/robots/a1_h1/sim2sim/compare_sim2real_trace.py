@@ -19,7 +19,7 @@ sys.path.insert(0, str(LEGACY_SRC))
 from sim2real_bridge.policy_runtime import A1DeployPolicy, DEFAULT_POLICY  # noqa: E402
 
 
-DEFAULT_MAX_DELTA = np.array([0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160], dtype=np.float64)
+DEFAULT_MAX_DELTA = np.array([0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100], dtype=np.float64)
 
 
 @dataclass

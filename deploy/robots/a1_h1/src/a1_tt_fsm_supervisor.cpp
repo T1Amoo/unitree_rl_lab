@@ -240,7 +240,8 @@ public:
             "q_max");
         default_q_ = clampQ(default_q_, q_min_, q_max_);
         test_joint_index_ = std::clamp(test_joint_index_, 1, static_cast<int>(kNumJoints));
-        if (test_signal_type_ != "sine" && test_signal_type_ != "chirp") {
+        if (test_signal_type_ != "sine" && test_signal_type_ != "chirp"
+            && test_signal_type_ != "step") {
             RCLCPP_WARN(
                 get_logger(),
                 "unknown test_signal_type '%s', falling back to sine",
@@ -557,7 +558,10 @@ private:
             const double env = smoothEnvelope(t_active, active_s, test_ramp_s_);
             const double phase = testPhaseRad(t_active, active_s);
             const int joint = std::clamp(test_joint_index_, 1, static_cast<int>(kNumJoints)) - 1;
-            q[joint] = default_q_[joint] + test_amplitude_rad_ * env * std::sin(phase);
+            const double wave = (test_signal_type_ == "step")
+                ? ((std::sin(phase) >= 0.0) ? 1.0 : -1.0)
+                : std::sin(phase);
+            q[joint] = default_q_[joint] + test_amplitude_rad_ * env * wave;
             q = clampQ(q, q_min_, q_max_);
         }
         publishAction(q);

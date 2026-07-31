@@ -21,7 +21,7 @@ from .policy_runtime import (
     ordered_joint_vector,
 )
 
-BRIDGE_MAX_DELTA_PER_TICK = [0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]
+BRIDGE_MAX_DELTA_PER_TICK = [0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100]
 
 
 def _bool_param(node: Node, name: str, default: bool) -> bool:

@@ -22,12 +22,18 @@ def guess_lgy_root() -> Path:
 LGY_ROOT = guess_lgy_root()
 DEFAULT_POLICY = (
     LGY_ROOT
-    / "Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx"
 )
 DEFAULT_PREDICTOR = DEFAULT_POLICY.with_name("predictor.onnx")
 
 ACTION_SCALE = 0.25
 CLIP_ACTIONS = 10.0
+# v10: first-order action-target low-pass matching training action_target_lowpass
+# (dq=(target-q)/tau clamped to vel_limit, integrated at the 50Hz control step). This
+# replaces the bang-bang max_delta clamp that excited the underdamped-plant jitter.
+LOWPASS_TAU = np.array([0.10, 0.10, 0.08, 0.10, 0.05, 0.05, 0.10], dtype=np.float64)
+LOWPASS_VEL = np.array([1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0], dtype=np.float64)
+LOWPASS_CONTROL_DT = 0.02
 CLIP_OBS = 100.0
 SOFT_JOINT_LIMIT_FACTOR = 0.95
 FRAME_SIZE = 39
@@ -50,73 +56,73 @@ BRIDGE_MAX_DELTA_PER_TICK = np.array([0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 
 REAL_RESPONSE_MAX_DELTA_PER_TICK = np.array([0.05, 0.05, 0.05, 0.10, 0.10, 0.10, 0.10], dtype=np.float64)
 REAL_RESPONSE_U_MEAN = np.array(
     [
-        0.5683523841788314,
-        -0.6892612481040505,
-        0.7196804487882763,
-        1.1293556605846493,
-        -1.2407980020381792,
-        0.030473524919208673,
-        0.7714033875755423,
+        -0.505,
+        -1.13,
+        1.13,
+        1.02,
+        -0.7,
+        0.0,
+        -1.3,
     ],
     dtype=np.float64,
 )
 REAL_RESPONSE_FN_HZ = np.array(
     [
-        4.974636627849852,
-        3.4161507054849762,
-        4.967641307013087,
-        4.341336283530257,
-        15.30971682198707,
-        8.223759975617558,
-        18.61140865177779,
+        15.835,
+        2.806,
+        18.0,
+        3.648,
+        30.0,
+        30.0,
+        30.0,
     ],
     dtype=np.float64,
 )
 REAL_RESPONSE_ZETA = np.array(
     [
-        0.4941346530768593,
-        0.3701409158816248,
-        0.47587293666159597,
-        0.22981041868709606,
-        0.7941795710126007,
-        0.565832498155223,
-        1.3208910165925782,
+        0.271,
+        0.555,
+        0.752,
+        0.721,
+        0.331,
+        1.058,
+        0.782,
     ],
     dtype=np.float64,
 )
 REAL_RESPONSE_DELAY_S = np.array(
     [
-        0.001999999999997056,
-        0.005352908841469569,
-        0.008116843219232367,
-        0.018006420135349824,
-        0.017563104629677986,
-        0.013993930820317215,
-        0.014997124673895237,
+        0.0362,
+        0.0,
+        0.0441,
+        0.0,
+        0.0443,
+        0.0381,
+        0.0376,
     ],
     dtype=np.float64,
 )
 REAL_RESPONSE_GAIN = np.array(
     [
-        0.9898595325716487,
-        0.9609492557382776,
-        1.0032869565726132,
-        1.0027218616565117,
-        0.9998451719960618,
-        1.0020846023179375,
-        1.0005302866606762,
+        0.9832,
+        0.9796,
+        0.9275,
+        1.0885,
+        0.9649,
+        1.0135,
+        1.0027,
     ],
     dtype=np.float64,
 )
 REAL_RESPONSE_BIAS_RAD = np.array(
     [
-        -0.015168034936686725,
-        0.018117660993894003,
-        -0.001476035439111456,
-        -0.03152619331089834,
-        -0.0003882480267090038,
-        0.0010492923888134296,
-        -0.00023117043260922898,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
     ],
     dtype=np.float64,
 )
@@ -132,9 +138,9 @@ DAMIAO_MIT_EFFORT = np.array([28.0, 28.0, 28.0, 8.0, 8.0, 8.0, 8.0], dtype=np.fl
 DAMIAO_MIT_VEL = np.array([8.0, 8.0, 8.0, 20.0, 20.0, 20.0, 20.0], dtype=np.float64)
 DAMIAO_MIT_BRAKE_EFFORT = DAMIAO_MIT_EFFORT.copy()
 
-HIT_PLANE_X = -1.60
+HIT_PLANE_X = -1.58
 HOME_Y = 0.76
-PADDLE_Y_OFFSET = -0.66
+PADDLE_Y_OFFSET = -0.72
 HIT_BODY_HEIGHT = 0.028
 PRED_SENTINEL = np.array([HIT_PLANE_X, HOME_Y + PADDLE_Y_OFFSET, HIT_BODY_HEIGHT + 0.2], dtype=np.float32)
 
@@ -280,6 +286,7 @@ class A1PolicyIO:
         self.raw_q_des = DEFAULT_RIGHT_Q.copy()
         self.q_des = DEFAULT_RIGHT_Q.copy()
         self.motor_q_des = DEFAULT_RIGHT_Q.copy()
+        self.lowpass_q = DEFAULT_RIGHT_Q.copy()   # v10 action-target low-pass state
         self.predictor = (
             OnnxBallPredictor(predictor_path)
             if use_predictor and Path(predictor_path).exists()
@@ -324,6 +331,7 @@ class A1PolicyIO:
             self.raw_q_des = q.copy()
             self.q_des = q.copy()
             self.motor_q_des = q.copy()
+            self.lowpass_q = q.copy()
         mujoco.mj_forward(self.model, self.data)
         return q.copy(), dq.copy()
 
@@ -427,14 +435,22 @@ class A1PolicyIO:
         raw_action: np.ndarray,
         max_delta_per_tick: np.ndarray | None = None,
         update_motor_target: bool = True,
+        lowpass: bool = False,
     ) -> np.ndarray:
         raw_action = np.asarray(raw_action, dtype=np.float32).reshape(7)
         self.last_action = raw_action
         clipped = np.clip(raw_action, -CLIP_ACTIONS, CLIP_ACTIONS).astype(np.float64)
         q_des = clipped * ACTION_SCALE + DEFAULT_RIGHT_Q
         self.raw_q_des = np.clip(q_des, self.q_min, self.q_max)
-        self.q_des = self.limit_q_des_delta(self.raw_q_des, self.q_des, max_delta_per_tick)
-        self.q_des = np.clip(self.q_des, self.q_min, self.q_max)
+        if lowpass:
+            # training-matched first-order low-pass (replaces bang-bang max_delta clamp)
+            desired_dq = (self.raw_q_des - self.lowpass_q) / LOWPASS_TAU
+            desired_dq = np.clip(desired_dq, -LOWPASS_VEL, LOWPASS_VEL)
+            self.lowpass_q = self.lowpass_q + desired_dq * LOWPASS_CONTROL_DT
+            self.q_des = np.clip(self.lowpass_q, self.q_min, self.q_max)
+        else:
+            self.q_des = self.limit_q_des_delta(self.raw_q_des, self.q_des, max_delta_per_tick)
+            self.q_des = np.clip(self.q_des, self.q_min, self.q_max)
         if update_motor_target:
             self.motor_q_des = self.q_des.copy()
         return self.q_des.copy()

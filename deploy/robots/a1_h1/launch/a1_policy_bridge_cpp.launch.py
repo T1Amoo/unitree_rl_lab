@@ -17,7 +17,7 @@ def _guess_lgy_root() -> Path:
 
 DEFAULT_POLICY = (
     _guess_lgy_root()
-    / "Pingpong_TTRL/logs/a1_tt_real_v1/2026-07-09_11-05-36_scratch_qdes_slew/exported/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx"
 )
 
 
@@ -67,9 +67,9 @@ def generate_launch_description():
             DeclareLaunchArgument("right_arm_device", default_value="/dev/ttyACM1"),
             DeclareLaunchArgument("fixstand_use_movej", default_value="true"),
             DeclareLaunchArgument("fixstand_enable_settle_s", default_value="0.5"),
-            DeclareLaunchArgument("vrpn_ball_topic", default_value="/vrpn_mocap/U_Tracker0/pose"),
+            DeclareLaunchArgument("vrpn_ball_topic", default_value="/pingpong_location"),
             DeclareLaunchArgument("ball_state_topic", default_value="/ball/state"),
-            DeclareLaunchArgument("test_enabled", default_value="true"),
+            DeclareLaunchArgument("test_enabled", default_value="false"),
             DeclareLaunchArgument("test_signal_type", default_value="sine"),
             DeclareLaunchArgument("test_joint_index", default_value="1"),
             DeclareLaunchArgument("test_freq_hz", default_value="0.5"),
@@ -121,7 +121,7 @@ def generate_launch_description():
                     {
                         "input_topic": vrpn_ball_topic,
                         "output_topic": ball_state_topic,
-                        "origin_in_training_world": [0.0, 0.0, 0.76],
+                        "origin_in_training_world": [0.0, 0.76, 0.76],
                         "rotation_wxyz_to_training": [1.0, 0.0, 0.0, 0.0],
                         "velocity_lpf_alpha": 0.35,
                         "diag_every": 50,
@@ -152,6 +152,7 @@ def generate_launch_description():
                         "joystick_passive_code": 21,
                         "require_ready_for_tt": True,
                         "hold_ready": True,
+                        "default_q": [0.569, -0.692, 0.717, 1.13, -1.24, 0.0314, 0.772],
                         "fixstand_timeout_s": 60.0,
                         "fixstand_interp_s": 2.0,
                         "fixstand_enable_settle_s": ParameterValue(fixstand_enable_settle_s, value_type=float),
@@ -198,11 +199,11 @@ def generate_launch_description():
                         "policy_enabled_on_start": ParameterValue(policy_enabled_on_start, value_type=bool),
                         "enable_on_start": ParameterValue(enable_on_start, value_type=bool),
                         "hold_when_ball_stale": False,
-                        "servo_filter_enabled": False,
-                        "servo_tau_s": 0.25,
+                        "servo_filter_enabled": True,
+                        "servo_tau_s": [0.10, 0.10, 0.08, 0.10, 0.05, 0.05, 0.10],
                         "servo_velocity_limit": [1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0],
-                        "qdes_slew_enabled": True,
-                        "max_delta_per_tick": [0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100],
+                        "qdes_slew_enabled": False,
+                        "max_delta_per_tick": [0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160],
                     }
                 ],
             ),

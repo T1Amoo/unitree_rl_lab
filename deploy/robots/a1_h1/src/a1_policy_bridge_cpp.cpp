@@ -69,6 +69,12 @@ const std::array<float, 3> kPredSentinel = {
 const std::array<double, 7> kIsaacServoVelocityLimit = {
     1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0};
 
+// v8+ training first-order low-pass tau (a1_tt_config.py A1_REAL_DEPLOY_LOWPASS_TAU_S).
+// Per-joint, NOT uniform: underdamped proximal r1/r2/r4 need large tau to suppress
+// resonance; wrist r5/r6 stay small for swing response.
+const std::array<double, 7> kIsaacServoTauS = {
+    0.10, 0.10, 0.08, 0.10, 0.05, 0.05, 0.10};
+
 fs::path findLgyRootFrom(fs::path start) {
     start = fs::absolute(start);
     if (fs::is_regular_file(start)) start = start.parent_path();
@@ -95,7 +101,7 @@ fs::path findLgyRoot() {
 
 std::string defaultPolicyPath() {
     return (findLgyRoot() /
-            "Pingpong_TTRL/logs/a1_tt_real_v1/2026-07-09_11-05-36_scratch_qdes_slew/exported/policy.onnx")
+            "Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx")
         .string();
 }
 
@@ -402,7 +408,6 @@ public:
         publish_actions_ = declare_parameter<bool>("publish_actions", true);
         publish_position_velocity_ = declare_parameter<bool>("publish_position_velocity", false);
         servo_filter_enabled_ = declare_parameter<bool>("servo_filter_enabled", true);
-        servo_tau_s_ = declare_parameter<double>("servo_tau_s", 0.25);
         qdes_slew_enabled_ = declare_parameter<bool>("qdes_slew_enabled", false);
         policy_enabled_ = declare_parameter<bool>("policy_enabled_on_start", false);
         enable_on_start_ = declare_parameter<bool>("enable_on_start", false);
@@ -421,6 +426,9 @@ public:
             throw std::runtime_error("max_delta_per_tick must contain 7 values");
         }
         std::copy(max_delta.begin(), max_delta.end(), max_delta_per_tick_.begin());
+        // Debug: freeze these joint indices (0-based) to their default pose instead of
+        // following the policy output. Runtime-settable via `ros2 param set ... zero_joints "[4,5,6]"`.
+        declare_parameter<std::vector<int64_t>>("zero_joints", std::vector<int64_t>{});
         auto servo_vel = declare_parameter<std::vector<double>>(
             "servo_velocity_limit",
             std::vector<double>(kIsaacServoVelocityLimit.begin(), kIsaacServoVelocityLimit.end()));
@@ -428,8 +436,17 @@ public:
             throw std::runtime_error("servo_velocity_limit must contain 7 values");
         }
         std::copy(servo_vel.begin(), servo_vel.end(), servo_velocity_limit_.begin());
-        if (servo_tau_s_ <= 0.0) {
-            throw std::runtime_error("servo_tau_s must be > 0");
+        auto servo_tau = declare_parameter<std::vector<double>>(
+            "servo_tau_s",
+            std::vector<double>(kIsaacServoTauS.begin(), kIsaacServoTauS.end()));
+        if (servo_tau.size() != 7) {
+            throw std::runtime_error("servo_tau_s must contain 7 values");
+        }
+        std::copy(servo_tau.begin(), servo_tau.end(), servo_tau_s_.begin());
+        for (double t : servo_tau_s_) {
+            if (t <= 0.0) {
+                throw std::runtime_error("servo_tau_s values must be > 0");
+            }
         }
 
         BallGateConfig gate_cfg;
@@ -485,7 +502,7 @@ public:
         publishEnable(enable_on_start_);
         RCLCPP_INFO(
             get_logger(),
-            "a1_policy_bridge_cpp ready: policy=%s predictor=%s joint_topic=%s ball_topic=%s action_topic=%s publish_actions=%s publish_pv=%s servo_filter=%s servo_tau=%.3f servo_vel=%s qdes_slew=%s max_delta_per_tick=%s",
+            "a1_policy_bridge_cpp ready: policy=%s predictor=%s joint_topic=%s ball_topic=%s action_topic=%s publish_actions=%s publish_pv=%s servo_filter=%s servo_tau=%s servo_vel=%s qdes_slew=%s max_delta_per_tick=%s",
             policy_path_.c_str(),
             predictor_ ? predictor_path_.c_str() : "(disabled)",
             joint_state_topic_.c_str(),
@@ -494,7 +511,7 @@ public:
             publish_actions_ ? "true" : "false",
             publishPositionVelocity() ? "true" : "false",
             servo_filter_enabled_ ? "true" : "false",
-            servo_tau_s_,
+            vecToString(servo_tau_s_).c_str(),
             vecToString(servo_velocity_limit_).c_str(),
             qdes_slew_enabled_ ? "true" : "false",
             vecToString(max_delta_per_tick_).c_str());
@@ -801,8 +818,18 @@ private:
 
     std::array<double, 7> actionToQDes(const std::array<float, 7>& raw_action) {
         last_action_ = raw_action;
+        std::vector<int64_t> zero_joints;
+        get_parameter("zero_joints", zero_joints);
+        std::array<bool, 7> zmask{};
+        for (int64_t j : zero_joints) {
+            if (j >= 0 && j < 7) zmask[static_cast<size_t>(j)] = true;
+        }
         std::array<double, 7> q_des{};
         for (size_t i = 0; i < 7; ++i) {
+            if (zmask[i]) {
+                q_des[i] = kDefaultRightQ[i];  // freeze to default, ignore policy
+                continue;
+            }
             const double a = clampDouble(raw_action[i], -kClipActions, kClipActions);
             q_des[i] = clampDouble(a * kActionScale + kDefaultRightQ[i], q_min_[i], q_max_[i]);
         }
@@ -873,7 +900,7 @@ private:
         }
         const auto prev = servo_q_cmd_;
         for (size_t i = 0; i < 7; ++i) {
-            const double desired_dq = (raw_q_des[i] - servo_q_cmd_[i]) / servo_tau_s_;
+            const double desired_dq = (raw_q_des[i] - servo_q_cmd_[i]) / servo_tau_s_[i];
             servo_dq_cmd_[i] = clampDouble(
                 desired_dq,
                 -std::abs(servo_velocity_limit_[i]),
@@ -977,7 +1004,7 @@ private:
     bool publish_actions_ = true;
     bool publish_position_velocity_ = false;
     bool servo_filter_enabled_ = true;
-    double servo_tau_s_ = 0.25;
+    std::array<double, 7> servo_tau_s_ = kIsaacServoTauS;
     bool qdes_slew_enabled_ = false;
     bool policy_enabled_ = false;
     bool enable_on_start_ = false;

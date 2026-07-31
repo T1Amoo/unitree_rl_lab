@@ -18,7 +18,7 @@ export LD_LIBRARY_PATH="$ONNX:${LD_LIBRARY_PATH:-}"
 
 PUBLISH_ACTIONS="${PUBLISH_ACTIONS:-false}"
 POLICY_ENABLED="${POLICY_ENABLED:-false}"
-MAX_DELTA_PER_TICK="${MAX_DELTA_PER_TICK:-[0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]}"
+MAX_DELTA_PER_TICK="${MAX_DELTA_PER_TICK:-[0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100]}"
 if [ -z "${POLICY_PATH:-}" ]; then
   ROOT="$HERE"
   while [ "$ROOT" != "/" ]; do
@@ -31,7 +31,7 @@ if [ -z "${POLICY_PATH:-}" ]; then
     echo "ERROR: could not find lgy root. Set POLICY_PATH explicitly." >&2
     exit 1
   fi
-  POLICY_PATH="$ROOT/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx"
+  POLICY_PATH="$ROOT/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx"
 fi
 PREDICTOR_PATH="${PREDICTOR_PATH:-}"
 

@@ -110,7 +110,7 @@ def freq_for_t(t: float, args: argparse.Namespace) -> float:
 def build_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--joint", type=int, required=True, choices=range(1, 8))
-    ap.add_argument("--signal-type", choices=["sine", "chirp"], default="sine")
+    ap.add_argument("--signal-type", choices=["sine", "chirp", "step"], default="sine")
     ap.add_argument("--freq", type=float, default=0.5)
     ap.add_argument("--chirp-start-hz", type=float, default=0.1)
     ap.add_argument("--chirp-end-hz", type=float, default=3.0)

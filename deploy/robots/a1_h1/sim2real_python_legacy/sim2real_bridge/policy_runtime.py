@@ -66,7 +66,7 @@ def guess_lgy_root() -> Path:
 
 
 LGY_ROOT = guess_lgy_root()
-DEFAULT_POLICY = LGY_ROOT / "Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx"
+DEFAULT_POLICY = LGY_ROOT / "Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx"
 
 
 def soft_joint_ranges() -> tuple[np.ndarray, np.ndarray]:

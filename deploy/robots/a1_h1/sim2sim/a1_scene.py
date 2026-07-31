@@ -24,12 +24,12 @@ def guess_lgy_root() -> Path:
 
 LGY_ROOT = guess_lgy_root()
 PINGPONG_TTRL = LGY_ROOT / "Pingpong_TTRL"
-A1_ASSET_ROOT = PINGPONG_TTRL / "legged_lab/assets/a1/X1_URDF_V1_1"
-DEFAULT_URDF = A1_ASSET_ROOT / "urdf/X1_URDF_V1_1.urdf"
+A1_ASSET_ROOT = PINGPONG_TTRL / "legged_lab/assets/a1/X1_URDF_V1_3"
+DEFAULT_URDF = A1_ASSET_ROOT / "urdf/X1_URDF_V1_3.urdf"
 DEFAULT_MESHDIR = A1_ASSET_ROOT / "meshes"
 DEFAULT_SCENE_XML = Path(__file__).resolve().parent / "scene/a1_tt_scene.xml"
 
-ROBOT_TABLE_POS = np.array([-1.8, 0.76, 0.0282], dtype=np.float64)
+ROBOT_TABLE_POS = np.array([-2.0, 0.76, 0.0282], dtype=np.float64)
 BALL_RADIUS = 0.02
 TABLE_HEIGHT = 0.76
 PHYSICS_DT = 0.002
@@ -70,13 +70,13 @@ DEFAULT_QPOS = {
     # v13 training matches the measured real r1 centerline height of 1.15 m.
     # X1_URDF_V1_1 gives sj ~= 1.15 - (0.0282 + 1.2107 + 0.025) = -0.1139.
     "sj": -0.1139,
-    "r1": 0.569,
-    "r2": -0.692,
-    "r3": 0.717,
-    "r4": 1.13,
-    "r5": -1.24,
-    "r6": 0.0314,
-    "r7": 0.772,
+    "r1": -0.505,
+    "r2": -1.13,
+    "r3": 1.13,
+    "r4": 1.02,
+    "r5": -0.7,
+    "r6": 0.0,
+    "r7": -1.3,
     "l1": 0.0,
     "l2": 0.0,
     "l3": 0.0,

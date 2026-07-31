@@ -285,6 +285,7 @@ def run(args: argparse.Namespace) -> dict:
         np.zeros(7, dtype=np.float32),
         max_delta_per_tick=max_delta_per_tick if args.real_response_model else None,
         update_motor_target=response_model is None,
+        lowpass=args.action_lowpass,
     )
     if args.initial_state_csv is not None:
         io.set_right_state(io.right_q(), io.right_dq(), reset_targets=True)
@@ -462,6 +463,7 @@ def run(args: argparse.Namespace) -> dict:
             action,
             max_delta_per_tick=max_delta,
             update_motor_target=response_model is None,
+            lowpass=args.action_lowpass,
         )
         raw_qdes_delta = io.raw_q_des - prev_q_des
         limited_qdes_delta = io.q_des - prev_q_des
@@ -738,6 +740,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--servo-tau", type=float, default=0.25, help="First-order visual servo time constant in seconds.")
     ap.add_argument("--fast-servo", action="store_true", help="Use the training hard velocity limits for the visual servo.")
     ap.add_argument("--bridge-qdes-limit", action="store_true", help="Apply the sim2real bridge max_delta_per_tick limit to policy q_des.")
+    ap.add_argument("--action-lowpass", action="store_true", help="Apply the training action_target first-order low-pass (v10) to q_des instead of the bang-bang max_delta clamp. Removes the underdamped-plant jitter.")
     ap.add_argument(
         "--real-response-model",
         action="store_true",

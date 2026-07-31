@@ -12,7 +12,7 @@ Z_BOUNCE = 0.78
 # first bounce deep on the robot half, not close to the table center.
 BOUNCE_X = (-1.24, -0.96)
 BOUNCE_VZ = (1.60, 2.10)
-SERVE_Y_CENTER = 0.12
+SERVE_Y_CENTER = 0.05
 SERVE_Y_HALF = 0.04
 
 

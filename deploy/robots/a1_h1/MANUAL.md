@@ -1,7 +1,7 @@
 # A1/H1 乒乓 Sim2Real C++ Bridge — 完整命令行手册
 
 覆盖 **策略导出 / C++ ONNX bridge / ROS dry-run / sim2real 真机接入** 全流程命令。
-最后更新 2026-07-09。
+最后更新 2026-07-27（新增第 11 节：相机版 CycloneDDS 三机实机流程 + 限幅机制澄清）。
 
 > 路径约定
 > - 训练仓库：`/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/`
@@ -56,7 +56,7 @@ PASSIVE --(27 或 fixstand)--> FIXSTAND --> READY --(28 或 table_tennis)--> TAB
 当前默认策略写在 launch 和 C++ 节点里：
 
 ```text
-Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx
+Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx
 ```
 
 本地可用 A1 policy：
@@ -77,7 +77,8 @@ find /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs \
 
 | 版本 | policy | predictor | 备注 |
 |---|---|---|---|
-| `a1_tt_v13/2026-07-08_12-40-15` | 有 | 有 | 当前默认；v13 `model_29999.pt` 导出 |
+| `a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k` | 有 | 有 | 当前默认；v7 `model_25300.pt` 导出 |
+| `a1_tt_v13/2026-07-08_12-40-15` | 有 | 有 | 旧正手基线；v13 `model_29999.pt` 导出 |
 | `a1_tt_v11/2026-07-07_10-48-31` | 有 | 默认无 | bridge 会用 analytic prediction fallback |
 | `a1_tt_v10/2026-07-07_07-51-54` | 有 | 有 | 可显式传 `predictor_path:=.../predictor.onnx` |
 | `a1_tt_v9/2026-07-07_02-50-16` | 有 | 有 | 可作对照 |
@@ -126,7 +127,7 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 
 ros2 launch sim2real_bridge_cpp a1_policy_bridge_cpp.launch.py \
-  predictor_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/predictor.onnx
+  predictor_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/predictor.onnx
 ```
 
 ---
@@ -382,7 +383,7 @@ conda deactivate
 source /opt/ros/humble/setup.bash
 
 ./install/sim2real_bridge_cpp/lib/sim2real_bridge_cpp/a1_policy_bridge_cpp --ros-args \
-  -p policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx \
+  -p policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx \
   -p joint_state_topic:=/right_joint_states \
   -p ball_state_topic:=/ball/state \
   -p publish_actions:=false \
@@ -410,7 +411,7 @@ conda deactivate
 source /opt/ros/humble/setup.bash
 
 ./install/sim2real_bridge_cpp/lib/sim2real_bridge_cpp/a1_policy_bridge_cpp --ros-args \
-  -p policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx \
+  -p policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx \
   -p joint_state_topic:=/right_joint_states \
   -p ball_state_topic:=/ball/state \
   -p action_topic:=/model_action \
@@ -418,7 +419,7 @@ source /opt/ros/humble/setup.bash
   -p policy_enabled_on_start:=true \
   -p enable_on_start:=false \
   -p hold_when_ball_stale:=false \
-  -p max_delta_per_tick:="[0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]" \
+  -p max_delta_per_tick:="[0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100]" \
   -p diag_every:=1
 ```
 
@@ -500,7 +501,7 @@ grep -RIn "max_delta_per_tick" \
 期望看到：
 
 ```text
-[0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]
+[0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100]
 ```
 
 #### 7b-2. 本机：检查并停止旧进程
@@ -599,7 +600,7 @@ source /opt/ros/humble/setup.bash
 LOG=/tmp/a1_sim2real_logs
 ROOT=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
 BIN=$ROOT/install/sim2real_bridge_cpp/lib/sim2real_bridge_cpp
-POLICY=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx
+POLICY=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx
 
 mkdir -p "$LOG/bags"
 
@@ -651,7 +652,7 @@ setsid "$BIN/a1_policy_bridge_cpp" --ros-args \
   -p policy_enabled_on_start:=false \
   -p enable_on_start:=false \
   -p hold_when_ball_stale:=false \
-  -p max_delta_per_tick:="[0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]" \
+  -p max_delta_per_tick:="[0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100]" \
   > "$LOG/a1_policy_bridge_cpp.log" 2>&1 < /dev/null &
 echo $! > "$LOG/a1_policy_bridge_cpp.pid"
 
@@ -682,7 +683,7 @@ head -n 20 /tmp/a1_sim2real_logs/a1_policy_bridge_cpp.log
 必须看到：
 
 ```text
-max_delta_per_tick=[0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]
+max_delta_per_tick=[0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100]
 policy runtime gate: topic=/a1_tt/policy_enable enabled=false
 ```
 
@@ -983,7 +984,7 @@ conda deactivate
 source /opt/ros/humble/setup.bash
 
 ./install/sim2real_bridge_cpp/lib/sim2real_bridge_cpp/a1_policy_bridge_cpp --ros-args \
-  -p policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx \
+  -p policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx \
   -p joint_state_topic:=/right_joint_states \
   -p ball_state_topic:=/ball/state \
   -p action_topic:=/model_action \
@@ -997,7 +998,7 @@ source /opt/ros/humble/setup.bash
   -p policy_enabled_on_start:=false \
   -p enable_on_start:=false \
   -p hold_when_ball_stale:=false \
-  -p max_delta_per_tick:="[0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160]"
+  -p max_delta_per_tick:="[0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100]"
 ```
 
 ### 7i. 分终端参考：本机检查
@@ -1117,7 +1118,7 @@ bridge 参数：
 
 | 参数 | 默认 | 说明 |
 |---|---:|---|
-| `policy_path` | v13/model_29999 policy | `policy.onnx` 路径 |
+| `policy_path` | v7/model_25300 policy | `policy.onnx` 路径 |
 | `predictor_path` | 空 | 空则找 policy 同目录 `predictor.onnx`，不存在则禁用 |
 | `use_predictor` | `true` | 是否尝试加载 predictor |
 | `control_hz` | `50.0` | bridge 推理频率 |
@@ -1125,7 +1126,11 @@ bridge 参数：
 | `publish_position_velocity` | `false` | `false` 发 7 维 q，`true` 发 14 维 q+dq |
 | `enable_on_start` | `false` | bridge 启动时是否发 `/model_control/enable=true` |
 | `hold_when_ball_stale` | `false` | 球超时时按 invalid/sentinel 观测继续走策略，由策略输出默认动作 |
-| `max_delta_per_tick` | `[0.020,0.024,0.036,0.032,0.080,0.064,0.160]` | 每个 50Hz policy tick 发布给 `/model_action` 的最大关节目标变化量，对齐 sim2sim 默认速度上限 |
+| `servo_filter_enabled` | `true` | **默认限幅器**：开则走一阶滤波，`max_delta_per_tick` 此时不生效（详见 11.7）|
+| `servo_tau_s` | `0.25` | 一阶滤波时间常数（秒），实机 07-25 实际用的就是它 |
+| `servo_velocity_limit` | `[1.0,1.2,1.8,1.6,4.0,3.2,8.0]` | 一阶滤波支路每关节速度上限 rad/s |
+| `qdes_slew_enabled` | `false` | 仅当 `servo_filter_enabled=false` 时启用硬限幅 |
+| `max_delta_per_tick` | `[0.050,...]` | 每 tick 最大关节变化量；**只在 `servo_filter=false && qdes_slew=true` 时生效**（默认死参数，见 11.7）|
 | `joint_timeout_s` | `2.0` | 关节反馈超时 |
 | `ball_timeout_s` | `0.20` | 球状态超时 |
 
@@ -1162,3 +1167,242 @@ bridge 参数：
 - **关节名必须匹配**：`joint1-a1_r ... joint7-a1_r`。bridge 也兼容 `joint1-r` 和 `r1` 这种别名，但实机建议统一用 A1 名称。
 - **一次只跑一个 bridge / 一个底层控制节点**。重复节点会抢 topic 和硬件设备。
 - **先软停再杀进程**：先发 `/model_control/enable=false`，再 `pkill`。
+
+---
+
+## 11. 相机版 sim2real 实机流程（2026-07-25 实测，CycloneDDS 三机）
+
+> 这一节记录 **2026-07-25 真机跑通的实际流程**：球位置输入从 VRPN 动捕换成 **本体相机（Jetson ZED-X）**，三台机器统一走 **CycloneDDS unicast**。第 6/7 节的 VRPN 流程仍然有效，本节是相机变体，且 kp/kd、限幅、球坐标偏移都和第 7 节的旧默认不同，实机以本节为准。
+
+### 11.0 三机架构
+
+```text
+Jetson 10.1.1.231 (jetson/yahboom, humble)
+  pingpong-detect.service -> /pingpong_location  (geometry_msgs/PoseStamped, 相机系, ~56Hz)
+
+本机 10.1.1.150 (humble, enp8s0)
+  a1_vrpn_ball_state_bridge  /pingpong_location -> /ball/state  (y+0.76 偏移)
+  a1_tt_fsm_supervisor       FSM
+  a1_policy_bridge_cpp       policy.onnx (+predictor) -> /model_action
+  ros2 bag record
+
+机器人 10.1.1.220 (wlab/wlab, jazzy, enp8s0)
+  inference_arm_control_node  /model_action -> DAMIAO 右臂 /dev/ttyACM1 (v7 kp/kd)
+  发布 /right_joint_states /joystick_info
+```
+
+- 有线网卡 IP：本机 `10.1.1.150`、Jetson `10.1.1.231`、机器人 `10.1.1.220`。
+- **三方 RMW 必须统一 `rmw_cyclonedds_cpp`**。本机若缺 `librmw_cyclonedds_cpp.so`，`export RMW=cyclonedds` 会**静默 fallback 到 fastrtps**，和 cyclonedds 的相机/机器人不通：`sudo apt install ros-humble-rmw-cyclonedds-cpp`。
+- 这网段多播不稳，靠 **unicast peers**，三方 `cyclonedds.xml` 的 Peers 要互列对方 IP。
+
+### 11.1 网络前置（每台机一次）
+
+**本机 CycloneDDS 配置** `/tmp/cyclonedds_enp8s0.xml`：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<CycloneDDS>
+  <Domain>
+    <General>
+      <NetworkInterfaceAddress>10.1.1.150</NetworkInterfaceAddress>
+    </General>
+    <Discovery>
+      <Peers>
+        <Peer address="10.1.1.231"/>
+        <Peer address="10.1.1.220"/>
+      </Peers>
+      <ParticipantIndex>auto</ParticipantIndex>
+    </Discovery>
+  </Domain>
+</CycloneDDS>
+```
+
+**本机每个 ROS 终端的环境**（conda 污染会让 rmw/rclpy 崩，务必先清）：
+
+```bash
+export PATH=$(echo "$PATH" | tr ':' '\n' | grep -vE 'anaconda3|miniconda|/conda' | paste -sd:)
+unset PYTHONPATH PYTHONHOME
+source /opt/ros/humble/setup.bash
+source /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=file:///tmp/cyclonedds_enp8s0.xml
+```
+
+**本机防火墙**：ufw active 会挡 DDS UDP。测试期间 `sudo ufw disable`，**测完务必 `sudo ufw enable`**。
+
+**机器人端** `/home/wlab/cyclonedds.xml` 的 Peers 要含本机 `10.1.1.150` 和 Jetson `10.1.1.231`；**Jetson 端** `/home/jetson/cyclonedds_eth.xml` 同理。
+
+> `ros2 param set` 在 cyclonedds 下会报 `empty node name from RMW`，**动态调参不可用，一律用启动参数 + 重启**。
+
+### 11.2 机器人端：启动底层 inference（v7 kp/kd）
+
+机器人 `wlab@10.1.1.220`（jazzy，用 `/home/wlab/pingpong/install`）。SDK 用 `ssh nohup` detach 不住，**在机器人终端前台/tmux 跑**：
+
+```bash
+source /home/wlab/pingpong/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=file:///home/wlab/cyclonedds.xml
+
+ros2 run armcontrol inference_arm_control_node --ros-args \
+  --params-file /home/wlab/pingpong/install/armcontrol/share/armcontrol/config/inference_arm_control_node.yaml \
+  -p servo_enabled_on_start:=false \
+  -p enable_motors_on_start:=false \
+  -p right_arm_device:=/dev/ttyACM1 \
+  -p kps:='[300.0,300.0,300.0,120.0,120.0,120.0,120.0]' \
+  -p kds:='[3.5,3.5,3.5,1.0,1.0,1.0,1.0]'
+```
+
+- **kp/kd = v7 值 `[300,300,300,120,120,120,120]` / `[3.5,3.5,3.5,1.0,1.0,1.0,1.0]`**（不是第 9 节旧的 v13 `[200/90]`、`[3.5/0.5]`）。
+- 右臂 DAMIAO 是 **`/dev/ttyACM1`（HDSC 芯片）**；`ttyACM0` 是 ESP32 调试口，不是臂。USB 重枚举后 ACM 号会浮动，用 `udevadm info /dev/ttyACM* | grep -i hdsc` 认。
+- CAN 断 → `/right_joint_states` 全 0 → FSM FixStand 超时（看着像“没反应”，其实是 CAN 掉了，重启 CAN）。
+
+### 11.3 Jetson 相机端：pingpong-detect 服务（发 /pingpong_location）
+
+相机节点由 systemd `pingpong-detect.service` 托管，需带 cyclonedds drop-in：
+
+`/home/jetson/cyclonedds_eth.xml`：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <Interfaces><NetworkInterface name="enP8p1s0"/></Interfaces>
+      <AllowMulticast>true</AllowMulticast>
+    </General>
+  </Domain>
+</CycloneDDS>
+```
+
+`/etc/systemd/system/pingpong-detect.service.d/rmw.conf`：
+
+```ini
+[Service]
+Environment="RMW_IMPLEMENTATION=rmw_cyclonedds_cpp"
+Environment="CYCLONEDDS_URI=file:///home/jetson/cyclonedds_eth.xml"
+```
+
+改完 `sudo systemctl daemon-reload && sudo systemctl restart pingpong-detect.service`。
+
+- ZED-X 走 **GMSL 非 USB**，`lsusb` 看不到是正常的；相机 `open failed` 通常是被占用/需要重启 Jetson。
+- 相机**检测到球才发**，桌面没球时 `/pingpong_location` 可能无数据，不是故障。
+
+本机侧确认相机在发：
+
+```bash
+ros2 topic hz /pingpong_location            # 有球时 ~56Hz
+ros2 topic echo /pingpong_location --field pose.position --once
+```
+
+> `ros2 topic echo /pingpong_location` 偶发 `serdata.cpp:384 string data is not null-terminated / invalid data size` 是**间歇噪声**（`hz` 能正常计数、`--field` 能取到值即证明数据在流），不影响主数据。
+
+### 11.4 本机：球 bridge（相机 → /ball/state，y+0.76 偏移）
+
+相机原点在桌中心，机器人物理站 `[-1.8, 0]`，训练系机器人在 `[-1.8, 0.76]`（差 y 0.76）。**不移机器人**，让球桥把每个球 `y+0.76`（等价“虚拟机器人在 y=0.76”），robot_pos 写死训练值不变。
+
+```bash
+"$BIN/a1_vrpn_ball_state_bridge" --ros-args \
+  -p input_topic:=/pingpong_location \
+  -p output_topic:=/ball/state \
+  -p origin_in_training_world:="[0.0, 0.76, 0.76]" \
+  -p rotation_wxyz_to_training:="[1.0, 0.0, 0.0, 0.0]" \
+  -p diag_every:=50
+```
+
+（`$BIN` = `.../install/sim2real_bridge_cpp/lib/sim2real_bridge_cpp`）验证：桌中心球 → `/ball/state` ≈ `[-0.05, 0.74, 0.78, ...]`（y 已 +0.76）。**注意与第 7 节 VRPN 版的 `origin_in_training_world=[0,0,0.76]` 不同（多了 y=0.76）。**
+
+### 11.5 本机：FSM + policy bridge
+
+FSM（正手用硬编码 default，无需 `-p default_q`；反手变体见 11.8）：
+
+```bash
+"$BIN/a1_tt_fsm_supervisor" --ros-args \
+  -p joint_state_topic:=/right_joint_states -p action_topic:=/model_action \
+  -p right_movej_topic:=/movej_right_angle -p enable_topic:=/model_control/enable \
+  -p policy_enable_topic:=/a1_tt/policy_enable -p joystick_topic:=/joystick_info \
+  -p command_topic:=/a1_tt/fsm_command -p state_topic:=/a1_tt/fsm_state \
+  -p control_hz:=50.0 -p joint_timeout_s:=2.0 \
+  -p joystick_fixstand_code:=27 -p joystick_table_tennis_code:=28 -p joystick_passive_code:=2
+```
+
+policy bridge（正手 v7 policy + 同源 predictor）：
+
+```bash
+POLICY=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx
+PRED=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/predictor.onnx
+
+"$BIN/a1_policy_bridge_cpp" --ros-args \
+  -p policy_path:="$POLICY" \
+  -p use_predictor:=true -p predictor_path:="$PRED" \
+  -p joint_state_topic:=/right_joint_states \
+  -p ball_state_topic:=/ball/state \
+  -p action_topic:=/model_action \
+  -p enable_topic:=/model_control/enable \
+  -p policy_enable_topic:=/a1_tt/policy_enable \
+  -p control_hz:=50.0 -p joint_timeout_s:=2.0 -p diag_every:=1 \
+  -p publish_actions:=true -p publish_position_velocity:=false \
+  -p policy_enabled_on_start:=false -p enable_on_start:=false \
+  -p hold_when_ball_stale:=false
+```
+
+启动后 `head -20 .../a1_policy_bridge_cpp.log` 必须看到 ready 行，其中限幅段是：
+
+```text
+servo_filter=true servo_tau=0.250 servo_vel=[1.000, 1.200, 1.800, 1.600, 4.000, 3.200, 8.000] qdes_slew=false max_delta_per_tick=[...]
+```
+
+### 11.6 本机：rosbag
+
+```bash
+BAG=/tmp/a1_sim2real_logs/bags/a1_run_$(date +%H%M%S)
+ros2 bag record -o "$BAG" \
+  /right_joint_states /ball/state /pingpong_location /joystick_info \
+  /a1_tt/fsm_state /a1_tt/policy_enable /model_control/enable /model_action \
+  /sim2real/gate /sim2real/raw_action /sim2real/q_des /sim2real/obs
+```
+
+> bag 在 `/tmp` 重启会丢，测完立刻 `cp -r` 到持久盘（如 `系统辨识/sim2real/<日期>/`），再 `ros2 bag reindex` 补 `metadata.yaml`。
+
+操作顺序同第 7 节：`L3`(27)→等 `state=READY`→`R3`(28)→TableTennis；异常 `Back`(21/2)→Passive。
+
+### 11.7 限幅机制澄清（一阶滤波 vs 硬限幅）
+
+**2026-07-25 实机用的是一阶滤波（`servo_tau_s`），不是硬限幅（`max_delta_per_tick`）。** bridge 里两套限幅**互斥**：
+
+| 参数 | 默认 | 作用 |
+|---|---:|---|
+| `servo_filter_enabled` | **`true`** | 开则走一阶滤波（**此分支下 `max_delta_per_tick` 完全不生效**）|
+| `servo_tau_s` | **`0.25`** | 一阶滤波时间常数（秒）：`dq = (raw_q_des - q_cmd)/tau`，再按 `servo_velocity_limit` 限速 |
+| `servo_velocity_limit` | `[1.0,1.2,1.8,1.6,4.0,3.2,8.0]` | 一阶滤波支路的每关节速度上限（rad/s，= `kIsaacServoVelocityLimit`）|
+| `qdes_slew_enabled` | `false` | **仅当 `servo_filter_enabled=false`** 时才启用硬限幅 `clampDelta(max_delta_per_tick)` |
+| `max_delta_per_tick` | `[0.02,0.024,0.036,0.032,0.08,0.064,0.16]`* | 每 tick 目标最大变化量；**只有 `servo_filter=false && qdes_slew=true` 时才起作用** |
+
+\* 07-25 传入的 `max_delta_per_tick` 值虽在 ready 行打印，但因 `qdes_slew=false` 是**死参数**。
+
+代码逻辑（`a1_policy_bridge_cpp.cpp` ~869-905）：
+
+```text
+if (!servo_filter_enabled_)      # 默认不进这支
+    cmd = qdes_slew_enabled_ ? clampDelta(raw_q_des) : raw_q_des;
+else                              # 默认走这支：一阶滤波
+    dq = (raw_q_des - servo_q_cmd) / servo_tau_s;
+    dq = clamp(dq, ±servo_velocity_limit);
+    servo_q_cmd += dq * dt;
+```
+
+要改成硬限幅需显式传 `-p servo_filter_enabled:=false -p qdes_slew_enabled:=true -p max_delta_per_tick:="[...]"`。
+
+> 第 7/9 节里把 `max_delta_per_tick` 当唯一限幅器的描述，对默认配置（`servo_filter=true`）是**误导的**——默认下真正的限幅是一阶滤波 `servo_tau_s=0.25` + `servo_velocity_limit`。
+
+### 11.8 反手策略变体（2026-07-25 晚）
+
+反手策略（`a1_backhand_deploy_model_10999`）除 FSM FixStand 外，**policy bridge 有三个正手硬编码常量必须改并重编译**（否则观测基准/击球面/预测都错、甩臂危险）：
+
+| 常量（`a1_policy_bridge_cpp.cpp`） | 正手 | 反手 |
+|---|---|---|
+| `kDefaultRightQ`（观测基准 + `q_des=action*scale+default`）| `{0.569,-0.692,0.717,1.13,-1.24,0.0314,0.772}` | `{1.769,-0.762,-1.863,1.445,0.206,-0.827,1.043}` |
+| `kHitPlaneX` | `-1.60` | `-1.43` |
+| `kPaddleYOffset` | `-0.66` | `-0.03` |
+
+FSM 侧用参数覆盖即可（不必改源码）：`-p default_q:="[1.769,-0.762,-1.863,1.445,0.206,-0.827,1.043]"`。
+反手包**没有 predictor.onnx**，用 `-p use_predictor:=true -p predictor_path:=<正手 v7 predictor>`（球飞行物理与正反手无关，正手 predictor 通用，比 analytic 抛物线 fallback 更准）。

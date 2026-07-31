@@ -61,7 +61,7 @@ joint feedback, ball gate, policy output, and diagnostics:
 ros2 launch sim2real_bridge a1_policy_bridge.launch.py \
   start_arm_control:=true \
   publish_actions:=false \
-  policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx
+  policy_path:=/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx
 ```
 
 Watch diagnostics:

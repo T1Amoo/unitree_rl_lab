@@ -17,7 +17,7 @@ def _guess_lgy_root() -> Path:
 
 DEFAULT_POLICY = (
     _guess_lgy_root()
-    / "Pingpong_TTRL/logs/a1_tt_v13/2026-07-08_12-40-15/exported/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx"
 )
 
 
@@ -88,7 +88,7 @@ def generate_launch_description():
                         "publish_position_velocity": ParameterValue(publish_position_velocity, value_type=bool),
                         "enable_on_start": ParameterValue(enable_on_start, value_type=bool),
                         "hold_when_ball_stale": False,
-                        "max_delta_per_tick": [0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160],
+                        "max_delta_per_tick": [0.050, 0.050, 0.050, 0.100, 0.100, 0.100, 0.100],
                     }
                 ],
             ),

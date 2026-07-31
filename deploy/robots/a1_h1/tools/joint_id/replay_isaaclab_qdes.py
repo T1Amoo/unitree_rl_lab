@@ -34,9 +34,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
     ap.add_argument("--velocity-limit", default="8 8 8 20 20 20 20")
     ap.add_argument(
         "--actuator-model",
-        choices=["implicit", "ideal_pd", "dc_motor", "damiao_mit"],
+        choices=["implicit", "ideal_pd", "delayed_pd", "dc_motor", "damiao_mit"],
         default="implicit",
         help="Right-arm actuator model used for replay. implicit preserves the original A1_TT_CFG behavior.",
+    )
+    ap.add_argument(
+        "--delay-steps",
+        default="0",
+        help=(
+            "One or seven integer physics-step command delays for --actuator-model=delayed_pd. "
+            "A single value keeps one right-arm actuator group; seven values split the arm into per-joint groups."
+        ),
     )
     ap.add_argument(
         "--command-delay-s",
@@ -178,6 +186,17 @@ def parse_list7(text: str) -> list[float]:
     return values
 
 
+def parse_delay_steps(text: str) -> list[int]:
+    values = [int(float(x)) for x in text.strip().strip("[]()").replace(",", " ").split()]
+    if len(values) == 1:
+        return values * 7
+    if len(values) != 7:
+        raise ValueError(f"expected one or seven delay-step values, got {len(values)}: {text!r}")
+    if any(value < 0 for value in values):
+        raise ValueError(f"delay steps must be non-negative: {text!r}")
+    return values
+
+
 def get_float(row: dict[str, str], key: str, default: float = math.nan) -> float:
     value = row.get(key, "")
     if value == "":
@@ -290,7 +309,7 @@ def main() -> int:
     sys.path.insert(0, str(legged_lab_root))
     sys.path.insert(0, str(legged_lab_root.parent))
     from assets.a1.a1 import A1_TT_CFG, A1_RIGHT_ARM_JOINTS  # noqa: PLC0415
-    from isaaclab.actuators import DCMotorCfg, IdealPDActuatorCfg  # noqa: PLC0415
+    from isaaclab.actuators import DCMotorCfg, DelayedPDActuatorCfg, IdealPDActuatorCfg  # noqa: PLC0415
     from actuators import DamiaoMITActuatorCfg  # noqa: PLC0415
 
     kp = parse_list7(args_cli.kp)
@@ -315,6 +334,7 @@ def main() -> int:
     response_intercept = parse_list7(args_cli.response_intercept)
     response_u_mean = parse_list7(args_cli.response_u_mean)
     response_tau_zero_s = parse_list7(args_cli.response_tau_zero_s)
+    delay_steps = parse_delay_steps(args_cli.delay_steps)
 
     cfg = copy.deepcopy(A1_TT_CFG).replace(prim_path="/World/Robot")
     cfg.spawn.articulation_props.fix_root_link = True
@@ -336,6 +356,31 @@ def main() -> int:
             damping=damping,
             saturation_effort=args_cli.saturation_effort,
         )
+    elif args_cli.actuator_model == "delayed_pd":
+        if len(set(delay_steps)) == 1:
+            cfg.actuators["right_arm"] = DelayedPDActuatorCfg(
+                joint_names_expr=A1_RIGHT_ARM_JOINTS,
+                effort_limit=effort_limit,
+                velocity_limit=velocity_limit,
+                velocity_limit_sim=velocity_limit,
+                stiffness=stiffness,
+                damping=damping,
+                min_delay=delay_steps[0],
+                max_delay=delay_steps[0],
+            )
+        else:
+            cfg.actuators.pop("right_arm", None)
+            for i, name in enumerate(A1_RIGHT_ARM_JOINTS):
+                cfg.actuators[f"right_arm_{name}"] = DelayedPDActuatorCfg(
+                    joint_names_expr=[name],
+                    effort_limit={name: effort[i]},
+                    velocity_limit={name: velocity[i]},
+                    velocity_limit_sim={name: velocity[i]},
+                    stiffness={name: kp[i]},
+                    damping={name: kd[i]},
+                    min_delay=delay_steps[i],
+                    max_delay=delay_steps[i],
+                )
     elif args_cli.actuator_model == "damiao_mit":
         cfg.actuators["right_arm"] = DamiaoMITActuatorCfg(
             joint_names_expr=A1_RIGHT_ARM_JOINTS,
@@ -392,14 +437,23 @@ def main() -> int:
         cfg.actuators["right_arm"].damping = damping
         cfg.actuators["right_arm"].effort_limit_sim = effort_limit
         cfg.actuators["right_arm"].velocity_limit_sim = velocity_limit
+    def set_right_arm_actuator_attr(attr_name: str, values: list[float]) -> None:
+        if "right_arm" in cfg.actuators:
+            setattr(
+                cfg.actuators["right_arm"],
+                attr_name,
+                {name: values[i] for i, name in enumerate(A1_RIGHT_ARM_JOINTS)},
+            )
+            return
+        for i, name in enumerate(A1_RIGHT_ARM_JOINTS):
+            actuator = cfg.actuators.get(f"right_arm_{name}")
+            if actuator is not None:
+                setattr(actuator, attr_name, {name: values[i]})
+
     if armature is not None:
-        cfg.actuators["right_arm"].armature = {
-            name: armature[i] for i, name in enumerate(A1_RIGHT_ARM_JOINTS)
-        }
+        set_right_arm_actuator_attr("armature", armature)
     if friction is not None:
-        cfg.actuators["right_arm"].friction = {
-            name: friction[i] for i, name in enumerate(A1_RIGHT_ARM_JOINTS)
-        }
+        set_right_arm_actuator_attr("friction", friction)
 
     sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=args_cli.dt, device=args_cli.device))
     if args_cli.ground_static_friction is not None or args_cli.ground_dynamic_friction is not None:
