@@ -1,0 +1,101 @@
+deploy/robots/a1_h1/launch/a1_policy_bridge_cpp.launch.py
+  s_2a60cd27fd1930::t_d3a6588b0b3525 70,124
+  s_643953f7e396fd::t_6158c343b3da3c 202-203,205
+  s_2a60cd27fd1930::t_4ebf8f9ce8ff88 206
+  s_2a60cd27fd1930::t_b1c019db187ee6 20,155
+  s_2a60cd27fd1930::t_7bb9e1fc5d2f1b 72
+deploy/robots/a1_h1/sim2real_python_legacy/sim2real_bridge/a1_policy_bridge_node.py
+  s_2a60cd27fd1930::t_6cf5256f9d3ebb 24
+deploy/robots/a1_h1/sim2sim/run_a1_tt_sim2sim.py
+  s_88e8ffb3462b74::t_fa0d42ba6426a2 288
+  s_88e8ffb3462b74::t_d944d5d2c8ede1 466
+  s_88e8ffb3462b74::t_80eda75c89cefa 743
+deploy/robots/a1_h1/MANUAL.md
+  s_88e8ffb3462b74::t_132b1b629149af 1129-1133
+  s_2a60cd27fd1930::t_54f3f9158d8cee 59,80-81,130,386,414,603,987,1121
+  s_2a60cd27fd1930::t_858ec5581c27c5 422,504,655,686,1001
+  s_88e8ffb3462b74::t_d1e0777a52cf04 4
+  s_88e8ffb3462b74::t_2bc6d32ae18f06 1170-1408
+deploy/robots/a1_h1/sim2sim/README.md
+  s_2a60cd27fd1930::t_c103c619f818a8 70
+deploy/robots/a1_h1/tools/joint_id/replay_isaaclab_qdes.py
+  s_2a60cd27fd1930::t_f4e071827bc099 37,41-48,189-199,312,337,359-383
+  s_2a60cd27fd1930::t_2458501299de5e 440-452,454,456
+deploy/robots/a1_h1/sim2sim/a1_scene.py
+  s_88e8ffb3462b74::t_c351bfee52c3b1 27-28
+  s_643953f7e396fd::t_7f4142fb961845 32
+  s_88e8ffb3462b74::t_4188fd509b3578 73-79
+deploy/robots/a1_h1/sim2sim/run_deploy.sh
+  s_2a60cd27fd1930::t_c1c49aa468173e 34
+  s_2a60cd27fd1930::t_6cf5256f9d3ebb 21
+deploy/robots/a1_h1/sim2sim/compare_sim2real_trace.py
+  s_2a60cd27fd1930::t_6cf5256f9d3ebb 22
+deploy/robots/a1_h1/src/a1_policy_bridge_cpp.cpp
+  s_88e8ffb3462b74::t_7aa08289cb4327 429-431
+  s_643953f7e396fd::t_29e76a94e3aa5a 1007
+  s_643953f7e396fd::t_100ec00b9e8b27 505
+  s_643953f7e396fd::t_82eba8ab427844 72-77
+  s_643953f7e396fd::t_0da98bfe115ef5 903
+  s_88e8ffb3462b74::t_67950f8f2b6bd4 821-826,829-832
+  s_643953f7e396fd::t_5f8d1ef1324963 514
+  s_2a60cd27fd1930::t_f8b111c3f5c1ea 104
+  s_643953f7e396fd::t_b97b3c55640047 439-449
+deploy/robots/a1_h1/sim2real_python_legacy/README.md
+  s_2a60cd27fd1930::t_0f37a092e5d52d 64
+deploy/robots/a1_h1/sim2sim/scene/a1_tt_scene.xml
+  s_88e8ffb3462b74::t_62b5cf367c4d96 2,40,49-53,57-58,62-63,72-73,82-83,92-93,102-103,107-108,112-140,147-175
+  s_88e8ffb3462b74::t_c70e18bb3f9ef4 9-39
+  s_643953f7e396fd::t_85f5e1fc5da411 46
+deploy/robots/a1_h1/sim2sim/policy_io.py
+  s_88e8ffb3462b74::t_75a293bb4a8178 334
+  s_88e8ffb3462b74::t_3f97b5b56d58e0 438,445-453
+  s_2a60cd27fd1930::t_729deb458260fd 25
+  s_88e8ffb3462b74::t_e316d46ca6417f 59-65,71-77,83-89,95-101,107-113,119-125
+  s_88e8ffb3462b74::t_91a9764f1dd076 141,143
+  s_88e8ffb3462b74::t_c185f4353787c9 289
+  s_88e8ffb3462b74::t_76637263d00c2b 31-36
+deploy/robots/a1_h1/src/a1_tt_fsm_supervisor.cpp
+  s_88e8ffb3462b74::t_68c4cedd43d3a5 243-244
+  s_88e8ffb3462b74::t_d98782b2fe3872 561-564
+deploy/robots/a1_h1/sim2real_python_legacy/launch/a1_policy_bridge.launch.py
+  s_2a60cd27fd1930::t_6cf5256f9d3ebb 91
+  s_2a60cd27fd1930::t_54eb6391f8d08e 20
+deploy/robots/a1_h1/sim2real_python_legacy/sim2real_bridge/policy_runtime.py
+  s_2a60cd27fd1930::t_9e8e439f154c0d 69
+deploy/robots/a1_h1/tools/joint_id/record_fsm_test.py
+  s_88e8ffb3462b74::t_cacae4237810c7 113
+deploy/robots/a1_h1/sim2sim/serve.py
+  s_88e8ffb3462b74::t_a742a38ce228b5 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3aeb5a7a63dbb19df6600dee45ef19605a485577",
+  "prompts": {},
+  "sessions": {
+    "s_2a60cd27fd1930": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa155-7444-7d52-998f-a29137cc11bb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_643953f7e396fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c101dffa-aa59-4a9f-891f-fa0d2478f73e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    },
+    "s_88e8ffb3462b74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46353d23-4af8-41a7-8834-f85b3864fa5c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
