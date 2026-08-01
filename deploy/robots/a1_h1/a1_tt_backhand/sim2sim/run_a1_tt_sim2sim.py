@@ -498,7 +498,12 @@ def run(args: argparse.Namespace) -> dict:
         gate_out = gate.update(ball_pos, ball_vel)
         if gate_out.engaged:
             stats["valid_frames"] += 1
-        obs = io.observe(ball_pos, ball_vel, valid_ball=gate_out.engaged)
+        obs = io.observe(
+            ball_pos,
+            ball_vel,
+            valid_ball=gate_out.engaged,
+            predictor_track_valid=ball_active,
+        )
         action = action_for_gate(
             policy,
             obs,

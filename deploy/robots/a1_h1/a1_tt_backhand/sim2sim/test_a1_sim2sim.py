@@ -338,6 +338,50 @@ def test_policy_obs_and_action_shape():
     assert action.shape == (7,)
 
 
+def test_predictor_track_warms_before_actor_gate_opens():
+    class FakePredictor:
+        def __init__(self):
+            self.history = []
+
+        def clear(self):
+            self.history.clear()
+
+        def __call__(self, ball_pos, track_valid):
+            if not track_valid:
+                self.clear()
+                return None
+            self.history.append(np.asarray(ball_pos, dtype=np.float32).copy())
+            if len(self.history) < 5:
+                return None
+            return np.array(
+                [PRED_SENTINEL[0], PRED_SENTINEL[1], 0.94],
+                dtype=np.float32,
+            )
+
+    model, data, _ = load_scene()
+    io = A1PolicyIO(model, data, use_predictor=False)
+    io.predictor = FakePredictor()
+    ball_vel = np.array([-5.0, 0.0, -1.0])
+
+    for i in range(5):
+        io.observe(
+            np.array([0.5 - 0.1 * i, 0.04, 1.2]),
+            ball_vel,
+            valid_ball=False,
+            predictor_track_valid=True,
+        )
+        np.testing.assert_allclose(io.last_ball_pred, PRED_SENTINEL)
+
+    io.observe(
+        np.array([-0.1, 0.04, 1.1]),
+        ball_vel,
+        valid_ball=True,
+        predictor_track_valid=True,
+    )
+    assert len(io.predictor.history) == 6
+    assert not np.allclose(io.last_ball_pred, PRED_SENTINEL)
+
+
 def test_damiao_constants_use_0729_backhand_real_fit():
     np.testing.assert_allclose(DAMIAO_MIT_KP, [300.0, 300.0, 300.0, 120.0, 120.0, 120.0, 60.0])
     np.testing.assert_allclose(DAMIAO_MIT_KD, [3.5, 3.5, 3.5, 1.0, 1.0, 1.0, 0.5])

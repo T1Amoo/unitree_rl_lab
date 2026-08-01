@@ -168,8 +168,8 @@ class OnnxBallPredictor:
     def clear(self) -> None:
         self.history.clear()
 
-    def __call__(self, ball_pos: np.ndarray, valid_ball: bool) -> np.ndarray | None:
-        if not valid_ball or not np.isfinite(ball_pos).all():
+    def __call__(self, ball_pos: np.ndarray, track_valid: bool) -> np.ndarray | None:
+        if not track_valid or not np.isfinite(ball_pos).all():
             self.clear()
             return None
         b = np.asarray(ball_pos, dtype=np.float32).reshape(3)
@@ -340,20 +340,37 @@ class A1PolicyIO:
             and 0.85 < pred[2] < 1.55
         )
 
-    def predict_ball(self, ball_pos: np.ndarray, ball_vel: np.ndarray, valid_ball: bool) -> np.ndarray:
+    def predict_ball(
+        self,
+        ball_pos: np.ndarray,
+        ball_vel: np.ndarray,
+        valid_ball: bool,
+        predictor_track_valid: bool,
+    ) -> np.ndarray:
         if self.predictor is not None:
-            pred = self.predictor(ball_pos, valid_ball)
+            pred = self.predictor(ball_pos, predictor_track_valid)
+            if not valid_ball:
+                return PRED_SENTINEL.copy()
             if pred is not None and self.plausible_prediction(pred):
                 return project_prediction_to_target_geometry(pred)
             return PRED_SENTINEL.copy()
         return self.analytic_prediction(ball_pos, ball_vel, valid_ball)
 
-    def compute_frame(self, ball_pos: np.ndarray, ball_vel: np.ndarray, valid_ball: bool = True) -> np.ndarray:
+    def compute_frame(
+        self,
+        ball_pos: np.ndarray,
+        ball_vel: np.ndarray,
+        valid_ball: bool = True,
+        predictor_track_valid: bool | None = None,
+    ) -> np.ndarray:
+        if predictor_track_valid is None:
+            predictor_track_valid = valid_ball
         q = self.right_q()
         dq = self.right_dq()
         joint_pos_rel = q - DEFAULT_RIGHT_Q
         robot_pos = ROBOT_TABLE_POS.astype(np.float32)
-        ball_pred = self.predict_ball(ball_pos, ball_vel, valid_ball)
+        ball_pred = self.predict_ball(
+            ball_pos, ball_vel, valid_ball, predictor_track_valid)
         self.last_ball_pred = ball_pred.copy()
         if not valid_ball:
             ball_obs = PRED_SENTINEL.copy()
@@ -381,8 +398,15 @@ class A1PolicyIO:
             ]
         ).astype(np.float32)
 
-    def observe(self, ball_pos: np.ndarray, ball_vel: np.ndarray, valid_ball: bool = True) -> np.ndarray:
-        frame = self.compute_frame(ball_pos, ball_vel, valid_ball)
+    def observe(
+        self,
+        ball_pos: np.ndarray,
+        ball_vel: np.ndarray,
+        valid_ball: bool = True,
+        predictor_track_valid: bool | None = None,
+    ) -> np.ndarray:
+        frame = self.compute_frame(
+            ball_pos, ball_vel, valid_ball, predictor_track_valid)
         if frame.shape != (FRAME_SIZE,):
             raise RuntimeError(f"bad frame shape {frame.shape}")
         self.history.append(frame)

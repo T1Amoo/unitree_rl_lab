@@ -767,7 +767,8 @@ private:
                     q_des = q_.value();
                     raw_action.fill(0.0f);
                 } else {
-                    auto step = policyStep(q_.value(), dq_, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, false);
+                    auto step = policyStep(
+                        q_.value(), dq_, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, false, false);
                     q_des = step.q_des;
                     raw_action = step.raw_action;
                     ball_pred = step.ball_pred;
@@ -775,7 +776,8 @@ private:
             } else {
                 gate_out = gate_->update(current_ball.first, current_ball.second);
                 auto step = policyStep(
-                    q_.value(), dq_, current_ball.first, current_ball.second, gate_out.engaged);
+                    q_.value(), dq_, current_ball.first, current_ball.second,
+                    gate_out.engaged, true);
                 q_des = step.q_des;
                 raw_action = step.raw_action;
                 ball_pred = step.ball_pred;
@@ -818,8 +820,10 @@ private:
         const std::array<double, 7>& dq,
         const std::array<double, 3>& ball_pos,
         const std::array<double, 3>& ball_vel,
-        bool valid_ball) {
-        const auto obs = observe(q, dq, ball_pos, ball_vel, valid_ball);
+        bool valid_ball,
+        bool predictor_track_valid) {
+        const auto obs = observe(
+            q, dq, ball_pos, ball_vel, valid_ball, predictor_track_valid);
         publishPolicyInputDiag(obs, last_frame_);
         const auto raw_vec = policy_->runSingle(obs);
         if (raw_vec.size() < 7) {
@@ -839,8 +843,10 @@ private:
         const std::array<double, 7>& dq,
         const std::array<double, 3>& ball_pos,
         const std::array<double, 3>& ball_vel,
-        bool valid_ball) {
-        auto frame = computeFrame(q, dq, ball_pos, ball_vel, valid_ball);
+        bool valid_ball,
+        bool predictor_track_valid) {
+        auto frame = computeFrame(
+            q, dq, ball_pos, ball_vel, valid_ball, predictor_track_valid);
         history_.push_back(frame);
         while (history_.size() > kHistory) history_.pop_front();
         std::vector<float> obs;
@@ -855,7 +861,8 @@ private:
         const std::array<double, 7>& dq,
         const std::array<double, 3>& ball_pos,
         const std::array<double, 3>& ball_vel,
-        bool valid_ball) {
+        bool valid_ball,
+        bool predictor_track_valid) {
         std::array<float, kFrameSize> frame{};
         size_t o = 0;
         frame[o++] = 0.0f;
@@ -868,7 +875,8 @@ private:
         for (double v : dq) frame[o++] = static_cast<float>(v);
         for (float v : last_action_) frame[o++] = v;
 
-        const auto ball_pred = predictBall(ball_pos, ball_vel, valid_ball);
+        const auto ball_pred = predictBall(
+            ball_pos, ball_vel, valid_ball, predictor_track_valid);
         last_ball_pred_ = ball_pred;
         const std::array<float, 3> ball_obs = valid_ball
             ? std::array<float, 3>{static_cast<float>(ball_pos[0]), static_cast<float>(ball_pos[1]), static_cast<float>(ball_pos[2])}
@@ -890,16 +898,19 @@ private:
     std::array<float, 3> predictBall(
         const std::array<double, 3>& ball_pos,
         const std::array<double, 3>& ball_vel,
-        bool valid_ball) {
-        // Match policy_io.py exactly: a learned predictor needs five real,
-        // consecutive valid samples.  Do not pad the history or switch to the
-        // analytic predictor when the learned output is warming up/implausible.
+        bool valid_ball,
+        bool predictor_track_valid) {
+        // Keep predictor history synchronized with every accepted physical
+        // track, even while the actor-facing safety gate is still closed.
+        // The gate continues to control ball visibility and policy action; it
+        // must not add a second five-frame warm-up after track acquisition.
         if (predictor_) {
-            if (!valid_ball || !finite3(ball_pos)) {
+            if (!predictor_track_valid || !finite3(ball_pos)) {
                 predictor_history_.clear();
                 return pred_sentinel_;
             }
             const auto pred = runPredictor(ball_pos);
+            if (!valid_ball) return pred_sentinel_;
             if (pred.has_value() && plausiblePrediction(pred.value())) {
                 return projectPrediction(pred.value());
             }
@@ -1002,7 +1013,7 @@ private:
         std::array<double, 7> q0 = q.value_or(default_right_q_);
         std::array<double, 7> dq0{};
         std::array<double, 3> zero3{0.0, 0.0, 0.0};
-        const auto frame = computeFrame(q0, dq0, zero3, zero3, false);
+        const auto frame = computeFrame(q0, dq0, zero3, zero3, false, false);
         for (int i = 0; i < kHistory; ++i) history_.push_back(frame);
     }
 

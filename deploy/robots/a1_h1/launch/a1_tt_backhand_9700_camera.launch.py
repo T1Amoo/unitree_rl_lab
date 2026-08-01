@@ -53,7 +53,10 @@ def generate_launch_description():
                         "max_innovation_m": 0.12,
                         "reacquire_innovation_m": 0.06,
                         "reacquire_max_speed_mps": 8.0,
-                        "acquire_frames": 3,
+                        # The Jetson empty-scene test is now zero-detection and
+                        # this bridge still enforces trajectory consistency.
+                        # Two frames recover one 60 Hz camera period of lead.
+                        "acquire_frames": 2,
                         "reacquire_frames": 5,
                         "reset_gap_s": 0.25,
                         "max_source_age_s": 0.30,
@@ -147,10 +150,10 @@ def generate_launch_description():
                         "hit_target_y_range": [-0.025, 0.107],
                         "hit_target_z_range": [0.86, 0.98],
                         "zero_action_when_ball_invalid": True,
-                        # Require two consecutive live ticks, then tolerate up
-                        # to four bad ticks. This removes single-frame chatter
-                        # while adding only one 20 ms tick to engagement.
-                        "gate_confirm_frames": 2,
+                        # The timestamp-aware trajectory filter is the acquire
+                        # stage; do not pay another 20 ms confirmation delay.
+                        # Keep the five-tick coast hysteresis on dropout.
+                        "gate_confirm_frames": 1,
                         "gate_coast_frames": 5,
                         # The 9700 backhand target is y=[-0.025, 0.107].
                         # Reject the static false stereo cluster around y=-0.5
