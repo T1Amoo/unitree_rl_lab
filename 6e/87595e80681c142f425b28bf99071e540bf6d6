@@ -1,0 +1,28 @@
+deploy/robots/a1_h1/a1_tt_backhand/README.md
+  s_d7bdfbc037e805::t_261117886f1fa6 32-35
+  s_d7bdfbc037e805::t_e5387a8c7b13de 46-60
+deploy/robots/a1_h1/launch/a1_tt_backhand_9700_camera.launch.py
+  s_d7bdfbc037e805::t_261117886f1fa6 108-110,123-124,127-128
+deploy/robots/a1_h1/src/a1_policy_bridge_cpp.cpp
+  s_d7bdfbc037e805::t_261117886f1fa6 43-46,354-357,835-841,843-847,852,859,866-867
+  s_d7bdfbc037e805::t_2e056d876c77fe 543,690,746-748,1020-1021,1053-1067,1172
+deploy/robots/a1_h1/tools/record_sim2real_trace.py
+  s_d7bdfbc037e805::t_571dd81ae0f91d 1-275,279-284
+  s_d7bdfbc037e805::t_5e6b3d542f1f4d 276-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "6e87595e80681c142f425b28bf99071e540bf6d6",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
