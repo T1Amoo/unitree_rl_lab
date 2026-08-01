@@ -1,0 +1,51 @@
+deploy/robots/a1_h1/a1_tt_backhand/run_sim2sim.sh
+  s_d7bdfbc037e805::t_7731d0108d028c 1-18
+deploy/robots/a1_h1/a1_tt_backhand/README.md
+  s_d7bdfbc037e805::t_1ce18edff9ce6b 14,17
+  s_d7bdfbc037e805::t_e057e5b8025cbb 15-16,18
+  s_d7bdfbc037e805::t_7731d0108d028c 1-13,19-33
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/README_original_sim2sim.md
+  s_d7bdfbc037e805::t_bc7e87c683cc42 1-165
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/a1_scene.py
+  s_d7bdfbc037e805::t_2620d25206aab8 1-813
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/ball_gate.py
+  s_d7bdfbc037e805::t_1fc6495ba579d8 1-153
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/policy_io.py
+  s_d7bdfbc037e805::t_9ac5c56773981e 1-539
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/run_a1_tt_sim2sim.py
+  s_d7bdfbc037e805::t_3f514f8c89cd6f 1-843
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/scene/a1_tt_scene.xml
+  s_d7bdfbc037e805::t_39eb6ea9a179e6 1-237
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/scene/a1_tt_scene_v1_3_backhand_low_arm_2100.xml
+  s_d7bdfbc037e805::t_d8533c0b0d75d1 1-233
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/scene/a1_tt_scene_v1_3_backhand_low_arm_hitplane020.xml
+  s_d7bdfbc037e805::t_468077f6d1b0a1 1-233
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/serve.py
+  s_d7bdfbc037e805::t_43c63573380719 1-54
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/test_a1_sim2sim.py
+  s_d7bdfbc037e805::t_09c815a4cd86c8 1-624
+deploy/robots/a1_h1/a1_tt_backhand/tools/joint_id/fit_0729_response.py
+  s_d7bdfbc037e805::t_e7d037ebbb5999 1-515
+deploy/robots/a1_h1/a1_tt_backhand/tools/joint_id/fit_second_order_actuator.py
+  s_d7bdfbc037e805::t_1733ca10c32d02 1-451
+deploy/robots/a1_h1/a1_tt_backhand/tools/joint_id/test_fit_0729_response.py
+  s_d7bdfbc037e805::t_65d0b8d76a18f9 1-151
+deploy/robots/a1_h1/a1_tt_backhand/tools/joint_id/test_fit_second_order_actuator.py
+  s_d7bdfbc037e805::t_84012cbf1edb54 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "67df2bec897454981a29b157579bfada7a9b8a05",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
