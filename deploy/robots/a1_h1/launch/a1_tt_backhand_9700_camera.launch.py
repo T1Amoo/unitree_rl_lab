@@ -105,7 +105,9 @@ def generate_launch_description():
                         "joint_timeout_s": 2.0,
                         "ball_timeout_s": 0.20,
                         "publish_actions": ParameterValue(publish_actions, value_type=bool),
-                        "publish_position_velocity": True,
+                        # Training and the real SDK both use position targets
+                        # with desired velocity/feedforward torque equal to zero.
+                        "publish_position_velocity": False,
                         "policy_enabled_on_start": False,
                         "enable_on_start": False,
                         "hold_when_ball_stale": False,
@@ -118,12 +120,12 @@ def generate_launch_description():
                         "hit_target_y_range": [-0.025, 0.107],
                         "hit_target_z_range": [0.86, 0.98],
                         "zero_action_when_ball_invalid": True,
-                        # This is the command-shaping path. The hard q-des slew route is disabled.
-                        "servo_filter_enabled": True,
+                        # Exact 9700 training action-target route at 50 Hz.
+                        "servo_filter_enabled": False,
                         "servo_tau_s": [0.10, 0.10, 0.08, 0.10, 0.05, 0.05, 0.10],
                         "servo_velocity_limit": [1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0],
-                        "qdes_slew_enabled": False,
-                        "max_delta_per_tick": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "qdes_slew_enabled": True,
+                        "max_delta_per_tick": [0.05, 0.05, 0.05, 0.10, 0.10, 0.10, 0.10],
                         "diag_every": 1,
                     }
                 ],

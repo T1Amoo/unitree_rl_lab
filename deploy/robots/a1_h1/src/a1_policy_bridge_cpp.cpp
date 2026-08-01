@@ -40,6 +40,10 @@ constexpr double kPaddleYOffset = -0.66;
 constexpr double kHitBodyHeight = 0.028;
 constexpr double kGravity = 9.81;
 constexpr double kZBounce = 0.78;
+// Must match sim2sim/serve.py BALL_DRAG_K.  The gate predicts the first table
+// bounce from the measured velocity, so omitting horizontal drag changes when
+// a real serve becomes valid.
+constexpr double kBallDragK = 0.09910893224020435;
 
 const std::array<std::string, 7> kRightJointNames = {
     "joint1-a1_r", "joint2-a1_r", "joint3-a1_r", "joint4-a1_r",
@@ -347,7 +351,10 @@ private:
         if (t1 > 1e-4) t = t1;
         if (t2 > 1e-4) t = std::isfinite(t) ? std::max(t, t2) : t2;
         if (!std::isfinite(t)) return std::numeric_limits<double>::quiet_NaN();
-        return pos[0] + vel[0] * t;
+        const double dx = kBallDragK > 1.0e-8
+            ? std::copysign(std::log1p(kBallDragK * std::abs(vel[0]) * t) / kBallDragK, vel[0])
+            : vel[0] * t;
+        return pos[0] + dx;
     }
 
     BallGateConfig cfg_;
@@ -533,6 +540,7 @@ public:
         dq_des_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/dq_des", 10);
         obs_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/obs", 10);
         frame_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/frame", 10);
+        timing_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/sim2real/timing", 10);
         gate_pub_ = create_publisher<std_msgs::msg::String>("/sim2real/gate", 10);
 
         joint_sub_ = create_subscription<sensor_msgs::msg::JointState>(
@@ -679,6 +687,7 @@ private:
             return;
         }
 
+        const auto compute_start = std::chrono::steady_clock::now();
         std::array<double, 7> q_des{};
         std::array<double, 7> dq_des{};
         std::array<float, 7> raw_action{};
@@ -734,7 +743,9 @@ private:
             action_pub_->publish(msg);
         }
 
-        publishDiag(raw_action, raw_q_des, q_des, dq_des, gate_out, ball_stale, ball_pred);
+        const double compute_ms = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - compute_start).count();
+        publishDiag(raw_action, raw_q_des, q_des, dq_des, gate_out, ball_stale, ball_pred, compute_ms);
     }
 
     struct PolicyStep {
@@ -821,36 +832,39 @@ private:
         const std::array<double, 3>& ball_pos,
         const std::array<double, 3>& ball_vel,
         bool valid_ball) {
-        if (predictor_ && valid_ball && finite3(ball_pos)) {
-            auto pred = runPredictor(ball_pos);
-            if (plausiblePrediction(pred)) {
-                return projectPrediction(pred);
+        // Match policy_io.py exactly: a learned predictor needs five real,
+        // consecutive valid samples.  Do not pad the history or switch to the
+        // analytic predictor when the learned output is warming up/implausible.
+        if (predictor_) {
+            if (!valid_ball || !finite3(ball_pos)) {
+                predictor_history_.clear();
+                return pred_sentinel_;
             }
-        } else if (!valid_ball) {
-            predictor_history_.clear();
+            const auto pred = runPredictor(ball_pos);
+            if (pred.has_value() && plausiblePrediction(pred.value())) {
+                return projectPrediction(pred.value());
+            }
+            return pred_sentinel_;
         }
         return analyticPrediction(ball_pos, ball_vel, valid_ball);
     }
 
-    std::array<float, 3> runPredictor(const std::array<double, 3>& ball_pos) {
+    std::optional<std::array<float, 3>> runPredictor(const std::array<double, 3>& ball_pos) {
         const std::array<float, 3> p{
             static_cast<float>(ball_pos[0]),
             static_cast<float>(ball_pos[1]),
             static_cast<float>(ball_pos[2])};
         predictor_history_.push_back(p);
         while (predictor_history_.size() > kHistory) predictor_history_.pop_front();
+        if (predictor_history_.size() < kHistory) return std::nullopt;
         std::vector<float> input;
         input.reserve(3 * kHistory);
-        const auto first = predictor_history_.empty() ? std::array<float, 3>{0.0f, 0.0f, 0.0f} : predictor_history_.front();
-        for (size_t i = predictor_history_.size(); i < kHistory; ++i) {
-            input.insert(input.end(), first.begin(), first.end());
-        }
         for (const auto& row : predictor_history_) {
             input.insert(input.end(), row.begin(), row.end());
         }
         const auto out = predictor_->runSingle(input);
-        if (out.size() < 3) return pred_sentinel_;
-        return {out[0], out[1], out[2]};
+        if (out.size() < 3) return std::nullopt;
+        return std::array<float, 3>{out[0], out[1], out[2]};
     }
 
     bool plausiblePrediction(const std::array<float, 3>& pred) const {
@@ -1003,7 +1017,8 @@ private:
         const std::array<double, 7>& dq_des,
         const BallGateOutput& gate_out,
         bool ball_stale,
-        const std::array<float, 3>& ball_pred) {
+        const std::array<float, 3>& ball_pred,
+        double compute_ms) {
         std_msgs::msg::Float64MultiArray raw_msg;
         raw_msg.data.reserve(7);
         for (float v : raw_action) raw_msg.data.push_back(static_cast<double>(v));
@@ -1034,6 +1049,21 @@ private:
            << " pred=" << vecToString(ball_pred);
         gate_msg.data = os.str();
         gate_pub_->publish(gate_msg);
+
+        std_msgs::msg::Float64MultiArray timing_msg;
+        timing_msg.data = {
+            static_cast<double>(tick_),
+            std::chrono::duration<double>(
+                std::chrono::system_clock::now().time_since_epoch()).count(),
+            nowSec(),
+            last_joint_time_.has_value() ? 1000.0 * (nowSec() - last_joint_time_.value()) : -1.0,
+            last_ball_time_.has_value() ? 1000.0 * (nowSec() - last_ball_time_.value()) : -1.0,
+            compute_ms,
+            gate_out.live ? 1.0 : 0.0,
+            gate_out.engaged ? 1.0 : 0.0,
+            ball_stale ? 1.0 : 0.0,
+        };
+        timing_pub_->publish(timing_msg);
 
         if (diag_every_ > 0 && tick_ % diag_every_ == 0) {
             float max_raw = 0.0f;
@@ -1139,6 +1169,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr dq_des_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr obs_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr frame_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr timing_pub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr gate_pub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr ball_sub_;
