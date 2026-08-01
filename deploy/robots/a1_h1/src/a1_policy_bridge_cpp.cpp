@@ -413,6 +413,14 @@ public:
         control_hz_ = declare_parameter<double>("control_hz", 50.0);
         joint_timeout_s_ = declare_parameter<double>("joint_timeout_s", 2.0);
         ball_timeout_s_ = declare_parameter<double>("ball_timeout_s", 0.20);
+        ball_coast_enabled_ = declare_parameter<bool>("ball_coast_enabled", true);
+        ball_coast_max_s_ = declare_parameter<double>("ball_coast_max_s", 0.12);
+        ball_coast_gravity_mps2_ = declare_parameter<double>("ball_coast_gravity_mps2", -9.81);
+        ball_coast_table_bounce_enabled_ = declare_parameter<bool>("ball_coast_table_bounce_enabled", true);
+        ball_coast_table_z_ = declare_parameter<double>("ball_coast_table_z", kZBounce);
+        ball_coast_table_restitution_ = declare_parameter<double>("ball_coast_table_restitution", 0.95);
+        ball_coast_max_s_ = std::max(0.0, ball_coast_max_s_);
+        ball_coast_table_restitution_ = clampDouble(ball_coast_table_restitution_, 0.0, 1.2);
         publish_actions_ = declare_parameter<bool>("publish_actions", true);
         publish_position_velocity_ = declare_parameter<bool>("publish_position_velocity", false);
         servo_filter_enabled_ = declare_parameter<bool>("servo_filter_enabled", true);
@@ -506,6 +514,7 @@ public:
         gate_cfg.confirm_frames = declare_parameter<int>("gate_confirm_frames", 1);
         gate_cfg.coast_frames = declare_parameter<int>("gate_coast_frames", 1);
         gate_cfg.vx_away = declare_parameter<double>("gate_min_approach_vx", -0.05);
+        gate_cfg.y_abs = declare_parameter<double>("gate_y_abs", 1.2);
         gate_cfg.hit_plane_x = hit_plane_x_;
         gate_ = std::make_unique<BallValidityGate>(gate_cfg);
 
@@ -670,6 +679,54 @@ private:
             policy_enabled_ ? "true" : "false");
     }
 
+    std::pair<std::array<double, 3>, std::array<double, 3>> propagateBallState(
+        std::array<double, 3> pos, std::array<double, 3> vel, double dt) const {
+        dt = std::max(0.0, dt);
+        double pre_bounce_dt = dt;
+        double post_bounce_dt = 0.0;
+        if (ball_coast_table_bounce_enabled_ && dt > 0.0
+            && pos[2] >= ball_coast_table_z_ - 0.02) {
+            const double a = 0.5 * ball_coast_gravity_mps2_;
+            const double b = vel[2];
+            const double c = pos[2] - ball_coast_table_z_;
+            const double disc = b * b - 4.0 * a * c;
+            if (std::abs(a) > 1e-12 && disc >= 0.0) {
+                const double root = std::sqrt(disc);
+                const double t1 = (-b - root) / (2.0 * a);
+                const double t2 = (-b + root) / (2.0 * a);
+                double impact_t = std::numeric_limits<double>::infinity();
+                if (t1 >= -1e-6) impact_t = std::min(impact_t, std::max(0.0, t1));
+                if (t2 >= -1e-6) impact_t = std::min(impact_t, std::max(0.0, t2));
+                if (impact_t <= dt && vel[2] + ball_coast_gravity_mps2_ * impact_t < 0.0) {
+                    pre_bounce_dt = impact_t;
+                    post_bounce_dt = dt - impact_t;
+                }
+            }
+        }
+        pos[0] += vel[0] * dt;
+        pos[1] += vel[1] * dt;
+        pos[2] += vel[2] * pre_bounce_dt
+            + 0.5 * ball_coast_gravity_mps2_ * pre_bounce_dt * pre_bounce_dt;
+        vel[2] += ball_coast_gravity_mps2_ * pre_bounce_dt;
+        if (post_bounce_dt > 0.0) {
+            pos[2] = ball_coast_table_z_;
+            vel[2] = -ball_coast_table_restitution_ * vel[2];
+            pos[2] += vel[2] * post_bounce_dt
+                + 0.5 * ball_coast_gravity_mps2_ * post_bounce_dt * post_bounce_dt;
+            vel[2] += ball_coast_gravity_mps2_ * post_bounce_dt;
+        }
+        return {pos, vel};
+    }
+
+    std::pair<std::array<double, 3>, std::array<double, 3>> ballStateAtNow() const {
+        auto pos = ball_pos_.value_or(std::array<double, 3>{0.0, 0.0, 0.0});
+        auto vel = ball_vel_.value_or(std::array<double, 3>{0.0, 0.0, 0.0});
+        if (!ball_coast_enabled_ || !last_ball_time_.has_value()) return {pos, vel};
+        const double dt = clampDouble(
+            nowSec() - last_ball_time_.value(), 0.0, ball_coast_max_s_);
+        return propagateBallState(pos, vel, dt);
+    }
+
     void controlTick() {
         ++tick_;
         if (!q_.has_value()) return;
@@ -697,6 +754,7 @@ private:
             std::numeric_limits<float>::quiet_NaN()};
         BallGateOutput gate_out;
         const bool ball_stale = stale(last_ball_time_, ball_timeout_s_);
+        const auto current_ball = ballStateAtNow();
 
         try {
             if (ball_stale) {
@@ -715,8 +773,9 @@ private:
                     ball_pred = step.ball_pred;
                 }
             } else {
-                gate_out = gate_->update(ball_pos_.value(), ball_vel_.value());
-                auto step = policyStep(q_.value(), dq_, ball_pos_.value(), ball_vel_.value(), gate_out.engaged);
+                gate_out = gate_->update(current_ball.first, current_ball.second);
+                auto step = policyStep(
+                    q_.value(), dq_, current_ball.first, current_ball.second, gate_out.engaged);
                 q_des = step.q_des;
                 raw_action = step.raw_action;
                 ball_pred = step.ball_pred;
@@ -1007,7 +1066,10 @@ private:
     }
 
     bool publishPositionVelocity() const {
-        return publish_position_velocity_ || servo_filter_enabled_;
+        // Command shaping may compute dq for diagnostics, but the training
+        // actuator consumes only the filtered position target. Keep the SDK
+        // wire format position-only unless explicitly requested.
+        return publish_position_velocity_;
     }
 
     void publishDiag(
@@ -1107,6 +1169,12 @@ private:
     double control_hz_ = 50.0;
     double joint_timeout_s_ = 2.0;
     double ball_timeout_s_ = 0.20;
+    bool ball_coast_enabled_ = true;
+    double ball_coast_max_s_ = 0.12;
+    double ball_coast_gravity_mps2_ = -9.81;
+    bool ball_coast_table_bounce_enabled_ = true;
+    double ball_coast_table_z_ = kZBounce;
+    double ball_coast_table_restitution_ = 0.95;
     bool publish_actions_ = true;
     bool publish_position_velocity_ = false;
     bool servo_filter_enabled_ = true;

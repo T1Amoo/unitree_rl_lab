@@ -1,0 +1,53 @@
+# Version-controlled deployment configuration for Jetson pingpong_detect.
+# Runtime package remains /home/jetson/pingpong/ros2_ws/src/pingpong_detect.
+
+engine_path: "/home/jetson/pingpong/ros2_ws/src/pingpong_detect/weights/filter/train21-yolov8n-640-fp16.engine"
+confidence_threshold: 0.5
+nms_threshold: 0.45
+drain_buffer: true
+
+triangulation:
+  method: "ray_intersection"
+
+use_world_frame: true
+
+apriltag:
+  # Calibrate at startup and then keep a fixed camera-to-table transform.
+  # Continuous recalibration can inject periodic world-coordinate jumps.
+  mode: "once"
+  roi_tracking: true
+  tag_world_coords_path: "/home/jetson/pingpong/ros2_ws/src/pingpong_detect/config/tag_world_coords_steep_15mm.json"
+  gpu:
+    quad_decimate: 2.0
+    decision_margin_min: 30.0
+    decode_mode: "track"
+    revalidate_period: 30
+    max_tag_jump_px: 80.0
+    calib_stride: 1
+
+subpixel:
+  enabled: true
+  hsv_lower: [10, 90, 130]
+  hsv_upper: [22, 255, 255]
+  pad: 0
+  max_offset_px: 15.0
+
+record:
+  enabled: true
+  output_dir: "/home/jetson/pingpong/ros2_ws/src/pingpong_detect/yellow_log"
+  save_images: true
+
+validation:
+  enabled: true
+  # The old 10 px epipolar tolerance admitted unrelated left/right boxes.
+  max_epipolar_dist_px: 3.0
+  min_disparity_px: 1.0
+  world_bounds:
+    x_min: -1.4
+    x_max: 1.4
+    # 9700 policy target y is [-0.025, 0.107]. Keep margin for the incoming
+    # flight while excluding the persistent false stereo cluster at y~-0.5.
+    y_min: -0.35
+    y_max: 0.35
+    z_min: 0.0
+    z_max: 1.0

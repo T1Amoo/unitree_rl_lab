@@ -44,7 +44,25 @@ def generate_launch_description():
                         # The 9700 policy uses robot_pos=(-1.8, 0.0, 0.0282), so no legacy y+0.76 shift.
                         "origin_in_training_world": [0.0, 0.0, 0.76],
                         "rotation_wxyz_to_training": [1.0, 0.0, 0.0, 0.0],
-                        "velocity_lpf_alpha": 0.35,
+                        # Timestamp-aware alpha-beta tracker. Reject isolated
+                        # stereo jumps, then extrapolate the accepted state from
+                        # the ZED exposure time to local receipt time.
+                        "temporal_filter_enabled": True,
+                        "filter_alpha": 0.65,
+                        "filter_beta": 0.10,
+                        "max_innovation_m": 0.12,
+                        "reacquire_innovation_m": 0.06,
+                        "reacquire_max_speed_mps": 8.0,
+                        "acquire_frames": 3,
+                        "reacquire_frames": 5,
+                        "reset_gap_s": 0.25,
+                        "max_source_age_s": 0.30,
+                        "max_extrapolation_s": 0.16,
+                        "gravity_mps2": -9.81,
+                        "table_bounce_enabled": True,
+                        "table_ball_center_z": 0.78,
+                        "table_restitution": 0.95,
+                        "max_speed_mps": 8.0,
                         "diag_every": 20,
                     }
                 ],
@@ -78,7 +96,7 @@ def generate_launch_description():
                         "fixstand_interp_s": 2.0,
                         "fixstand_enable_settle_s": 0.5,
                         "enable_republish_ticks": 0,
-                        "diag_every": 10,
+                        "diag_every": 50,
                         "fixstand_use_movej": True,
                         "damping_exit_delay_s": 0.10,
                         "joystick_debounce_s": 0.50,
@@ -103,7 +121,16 @@ def generate_launch_description():
                         "policy_enable_topic": "/a1_tt/policy_enable",
                         "control_hz": 50.0,
                         "joint_timeout_s": 2.0,
-                        "ball_timeout_s": 0.20,
+                        "ball_timeout_s": 0.16,
+                        # Between new camera messages, advance the filtered
+                        # state at the 50 Hz policy clock instead of repeating
+                        # an old point as if it were a fresh predictor sample.
+                        "ball_coast_enabled": True,
+                        "ball_coast_max_s": 0.12,
+                        "ball_coast_gravity_mps2": -9.81,
+                        "ball_coast_table_bounce_enabled": True,
+                        "ball_coast_table_z": 0.78,
+                        "ball_coast_table_restitution": 0.95,
                         "publish_actions": ParameterValue(publish_actions, value_type=bool),
                         # Training and the real SDK both use position targets
                         # with desired velocity/feedforward torque equal to zero.
@@ -120,13 +147,24 @@ def generate_launch_description():
                         "hit_target_y_range": [-0.025, 0.107],
                         "hit_target_z_range": [0.86, 0.98],
                         "zero_action_when_ball_invalid": True,
-                        # Exact 9700 training action-target route at 50 Hz.
-                        "servo_filter_enabled": False,
+                        # Require two consecutive live ticks, then tolerate up
+                        # to four bad ticks. This removes single-frame chatter
+                        # while adding only one 20 ms tick to engagement.
+                        "gate_confirm_frames": 2,
+                        "gate_coast_frames": 5,
+                        # The 9700 backhand target is y=[-0.025, 0.107].
+                        # Reject the static false stereo cluster around y=-0.5
+                        # and require a physically incoming ball.
+                        "gate_y_abs": 0.35,
+                        "gate_min_approach_vx": -0.50,
+                        # Training action-target route at 50 Hz: first-order
+                        # low-pass plus the matching per-joint velocity cap.
+                        "servo_filter_enabled": True,
                         "servo_tau_s": [0.10, 0.10, 0.08, 0.10, 0.05, 0.05, 0.10],
                         "servo_velocity_limit": [1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0],
-                        "qdes_slew_enabled": True,
-                        "max_delta_per_tick": [0.05, 0.05, 0.05, 0.10, 0.10, 0.10, 0.10],
-                        "diag_every": 1,
+                        "qdes_slew_enabled": False,
+                        "max_delta_per_tick": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "diag_every": 50,
                     }
                 ],
             ),

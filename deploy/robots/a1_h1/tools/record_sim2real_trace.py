@@ -15,6 +15,7 @@ from pathlib import Path
 
 import rclpy
 from geometry_msgs.msg import PoseStamped
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import JointState
@@ -262,8 +263,14 @@ def main() -> None:
     node = Sim2RealTraceRecorder(csv_path, args.rate_hz)
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except Exception:
+        # CycloneDDS can surface an RCLError from wait_set construction after
+        # SIGINT has already invalidated the context. Preserve real runtime
+        # errors, but treat that shutdown race as a normal recorder stop.
+        if rclpy.ok():
+            raise
     finally:
         node.close()
         metadata.update(

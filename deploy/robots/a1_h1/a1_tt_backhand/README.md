@@ -29,10 +29,27 @@ ros2 launch sim2real_bridge_cpp a1_tt_backhand_9700_camera.launch.py
 ```
 
 The real launch starts in `PASSIVE`, consumes `/pingpong_location`, uses the
-base-9700 table frame without the legacy `y+0.76` offset, and uses the exact
-9700 training action-target limiter: at 50 Hz, `max_delta_per_tick` is
-`[0.05, 0.05, 0.05, 0.10, 0.10, 0.10, 0.10]`. The first-order `servo_tau_s`
-branch is explicitly disabled for this frozen policy.
+base-9700 table frame without the legacy `y+0.76` offset, and uses the training
+first-order action-target low-pass at 50 Hz. Its per-joint `servo_tau_s` is
+`[0.10, 0.10, 0.08, 0.10, 0.05, 0.05, 0.10]` seconds and its matching velocity
+cap is `[1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0]` rad/s. The hard q-des slew branch
+is disabled.
+
+The camera path is timestamp-aware. `a1_vrpn_ball_state_bridge` requires three
+consistent samples to acquire a new track, rejects isolated 3-D stereo
+innovations above 0.12 m, and reacquires only after five samples that remain
+within 0.06 m of one physically plausible trajectory. It propagates the
+accepted state from the ZED exposure time to local receipt time and models one
+table bounce at ball-center `z=0.78 m`. Between camera callbacks the policy
+bridge coasts that state at the fixed 50 Hz policy clock, so the learned
+five-frame predictor does not receive repeated old points as fresh samples.
+The gate requires two live ticks and coasts through at most four bad ticks
+(`confirm=2`, `coast=5`). It also limits the camera-space table corridor to
+`|y| <= 0.35 m` and requires `vx <= -0.50 m/s`; the policy's trained hit target
+is only `y=[-0.025, 0.107]`, so this rejects the observed static false stereo
+cluster around `y=-0.5` without narrowing the actor target. These settings
+address measurement jitter; they do not change the policy's table frame or
+action contract.
 
 Run a deterministic headless check:
 

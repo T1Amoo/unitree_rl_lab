@@ -1,0 +1,123 @@
+diff --git a/src/main_graph.cpp b/src/main_graph.cpp
+--- a/src/main_graph.cpp
++++ b/src/main_graph.cpp
+@@ -33,6 +33,7 @@ public:
+         std::string tri_method = config["triangulation"]["method"].as<std::string>("ray_intersection");
+         use_world_frame_ = config["use_world_frame"].as<bool>(true);
+         apriltag_mode_ = config["apriltag"]["mode"].as<std::string>("once");
++        drain_buffer_ = config["drain_buffer"].as<bool>(true);
+         std::string tag_coords_path = config["apriltag"]["tag_world_coords_path"].as<std::string>("");
+ 
+         bool record_enabled = config["record"]["enabled"].as<bool>(false);
+@@ -329,3 +330,19 @@ private:
+-        if (zed_.grab() != sl::ERROR_CODE::SUCCESS) return;
+-        uint64_t grab_ts_ns = zed_.getTimestamp(sl::TIME_REFERENCE::IMAGE).getNanoseconds();
++        auto t_before_grab = std::chrono::high_resolution_clock::now();
++        if (zed_.grab() != sl::ERROR_CODE::SUCCESS) return;
++        auto t_after_grab = std::chrono::high_resolution_clock::now();
++        const double first_grab_ms = std::chrono::duration<double, std::milli>(
++            t_after_grab - t_before_grab).count();
++        // A fast first grab means the ZED SDK returned an already-buffered
++        // frame. Drain all immediately available frames before inference so
++        // the published image timestamp is the newest one.
++        if (drain_buffer_ && first_grab_ms < 2.0) {
++            while (true) {
++                const auto t0 = std::chrono::high_resolution_clock::now();
++                if (zed_.grab() != sl::ERROR_CODE::SUCCESS) break;
++                const double grab_ms = std::chrono::duration<double, std::milli>(
++                    std::chrono::high_resolution_clock::now() - t0).count();
++                if (grab_ms > 2.0) break;
++            }
++        }
++        const uint64_t grab_ts_ns = zed_.getTimestamp(sl::TIME_REFERENCE::IMAGE).getNanoseconds();
+         auto t_grab = std::chrono::high_resolution_clock::now();
+@@ -371,15 +388,15 @@ private:
+         // Print detection results every frame
+         if (dets_left.empty()) {
+-            RCLCPP_INFO(get_logger(), "[LEFT ] No detection");
++            RCLCPP_DEBUG(get_logger(), "[LEFT ] No detection");
+         } else {
+             auto& d = dets_left[0];
+-            RCLCPP_INFO(get_logger(), "[LEFT ] conf=%.3f bbox=[%.1f, %.1f, %.1f, %.1f]",
++            RCLCPP_DEBUG(get_logger(), "[LEFT ] conf=%.3f bbox=[%.1f, %.1f, %.1f, %.1f]",
+                         d.conf, d.bbox[0], d.bbox[1], d.bbox[2], d.bbox[3]);
+         }
+         if (dets_right.empty()) {
+-            RCLCPP_INFO(get_logger(), "[RIGHT] No detection");
++            RCLCPP_DEBUG(get_logger(), "[RIGHT] No detection");
+         } else {
+             auto& d = dets_right[0];
+-            RCLCPP_INFO(get_logger(), "[RIGHT] conf=%.3f bbox=[%.1f, %.1f, %.1f, %.1f]",
++            RCLCPP_DEBUG(get_logger(), "[RIGHT] conf=%.3f bbox=[%.1f, %.1f, %.1f, %.1f]",
+                         d.conf, d.bbox[0], d.bbox[1], d.bbox[2], d.bbox[3]);
+         }
+@@ -400,7 +417,7 @@ private:
+         }
+ 
+         auto t_det_end = std::chrono::high_resolution_clock::now();
+-        RCLCPP_INFO(get_logger(), "[T] grab=%.2f retr=%.2f infL=%.2f infR=%.2f | det=%.2f ms",
++        RCLCPP_DEBUG(get_logger(), "[T] grab=%.2f retr=%.2f infL=%.2f infR=%.2f | det=%.2f ms",
+                     std::chrono::duration<double, std::milli>(t_grab - t_start).count(),
+                     std::chrono::duration<double, std::milli>(t_retr - t_grab).count(),
+                     std::chrono::duration<double, std::milli>(t_infL - t_retr).count(),
+@@ -444,6 +461,6 @@ private:
+         }
+ 
+         if (best_i < 0) {
+-            RCLCPP_INFO(get_logger(), "[MATCH] No valid stereo pair (epipolar filter)");
++            RCLCPP_DEBUG(get_logger(), "[MATCH] No valid stereo pair (epipolar filter)");
+             return;
+         }
+@@ -484,6 +501,6 @@ private:
+             refine(d_l, gpu_ptr_left, step_left, center_l,
+                    (recording_ && save_images_) ? &roi_left_bgr : nullptr);
+             refine(d_r, gpu_ptr_right, step_right, center_r,
+                    (recording_ && save_images_) ? &roi_right_bgr : nullptr);
+-            RCLCPP_INFO(get_logger(), "[SUBPX] L=(%.2f,%.2f) R=(%.2f,%.2f)",
++            RCLCPP_DEBUG(get_logger(), "[SUBPX] L=(%.2f,%.2f) R=(%.2f,%.2f)",
+                         center_l.x, center_l.y, center_r.x, center_r.y);
+@@ -506,6 +523,22 @@ private:
+             }
+         }
+ 
++        // Sub-pixel refinement can move the centers after the original box-
++        // center match. Recheck epipolar geometry before triangulation.
++        if (validation_enabled_) {
++            cv::Mat refined_left = (cv::Mat_<double>(3, 1)
++                << center_l.x, center_l.y, 1.0);
++            cv::Mat refined_line = F_ * refined_left;
++            const double a = refined_line.at<double>(0);
++            const double b = refined_line.at<double>(1);
++            const double c = refined_line.at<double>(2);
++            const double norm = std::sqrt(a * a + b * b);
++            const double epipolar_dist = std::abs(
++                a * center_r.x + b * center_r.y + c) / std::max(norm, 1e-9);
++            if (epipolar_dist > max_epipolar_dist_px_
++                || center_l.x - center_r.x <= min_disparity_px_) return;
++        }
++
+         bool tri_ok = false;
+         cv::Vec3d point_cam_mm = triangulator_.triangulate(center_l, center_r, &tri_ok);
+         if (!tri_ok) return;
+@@ -516,5 +549,5 @@ private:
+             frame_id = "camera_left";
+         }
+ 
+-        RCLCPP_INFO(get_logger(), "[3D  ] frame=%s x=%.3f y=%.3f z=%.3f (m)",
++        RCLCPP_DEBUG(get_logger(), "[3D  ] frame=%s x=%.3f y=%.3f z=%.3f (m)",
+                     frame_id.c_str(), position_m[0], position_m[1], position_m[2]);
+@@ -526,6 +559,6 @@ private:
+                 position_m[1] < world_y_min_ || position_m[1] > world_y_max_ ||
+                 position_m[2] < world_z_min_ || position_m[2] > world_z_max_) {
+-                RCLCPP_INFO(get_logger(), "[REJECT] pos=[%.3f,%.3f,%.3f] out of bounds",
++                RCLCPP_DEBUG(get_logger(), "[REJECT] pos=[%.3f,%.3f,%.3f] out of bounds",
+                             position_m[0], position_m[1], position_m[2]);
+                 return;
+             }
+@@ -582,5 +615,6 @@ private:
+ 
+     cv::Mat K_left_, K_right_, dist_left_;
+     cv::Mat F_;
+     bool use_world_frame_ = true;
++    bool drain_buffer_ = true;
+     std::string apriltag_mode_ = "once";

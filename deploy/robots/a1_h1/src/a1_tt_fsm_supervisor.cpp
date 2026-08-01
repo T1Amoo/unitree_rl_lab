@@ -720,7 +720,10 @@ private:
         clearDampingExitGuard();
         publishDamping(false, true);
         publishPolicyEnable(true, true);
-        publishServoEnable(true, true);
+        // READY already enabled the SDK servo. Re-publishing true makes the
+        // bottom controller re-enable seven motors synchronously (7 x 100 ms),
+        // stalling the 100 Hz command loop just as policy control starts.
+        publishServoEnable(true, false);
         publishState();
         RCLCPP_INFO(get_logger(), "enter TABLE_TENNIS: reason=%s", reason.c_str());
     }
