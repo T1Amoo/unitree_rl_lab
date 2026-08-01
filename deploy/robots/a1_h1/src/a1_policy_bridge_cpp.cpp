@@ -244,6 +244,7 @@ struct BallGateConfig {
     double x_max = 1.65;
     double speed_max = 15.0;
     double vx_away = -0.05;
+    double hit_plane_x = kHitPlaneX;
     double behind_margin = 0.05;
     double bounce_vz_down = 0.30;
     double bounce_vz_up = 0.05;
@@ -307,7 +308,7 @@ private:
         if (std::abs(pos[1]) > cfg_.y_abs || pos[2] > cfg_.z_max || pos[0] > cfg_.x_max) {
             return {false, "out_volume"};
         }
-        if (pos[0] < kHitPlaneX - cfg_.behind_margin) return {false, "behind_hit_plane"};
+        if (pos[0] < cfg_.hit_plane_x - cfg_.behind_margin) return {false, "behind_hit_plane"};
         if (vel[0] > cfg_.vx_away) return {false, "moving_away"};
         if (pos[2] < cfg_.z_min) return {false, "low_or_dead"};
         if (own_bounces_ >= 2) return {false, "double_bounce"};
@@ -419,6 +420,51 @@ public:
         policy_enable_topic_ = declare_parameter<std::string>("policy_enable_topic", "/a1_tt/policy_enable");
         joint_state_topic_ = declare_parameter<std::string>("joint_state_topic", "/right_joint_states");
         ball_state_topic_ = declare_parameter<std::string>("ball_state_topic", "/ball/state");
+        auto default_q = declare_parameter<std::vector<double>>(
+            "default_q", std::vector<double>(kDefaultRightQ.begin(), kDefaultRightQ.end()));
+        if (default_q.size() != 7) {
+            throw std::runtime_error("default_q must contain 7 values");
+        }
+        std::copy(default_q.begin(), default_q.end(), default_right_q_.begin());
+
+        auto robot_table_pos = declare_parameter<std::vector<double>>(
+            "robot_table_pos", {-1.8, 0.76, 0.0282});
+        if (robot_table_pos.size() != 3) {
+            throw std::runtime_error("robot_table_pos must contain 3 values");
+        }
+        for (size_t i = 0; i < 3; ++i) {
+            robot_table_pos_[i] = static_cast<float>(robot_table_pos[i]);
+        }
+        hit_plane_x_ = declare_parameter<double>("hit_plane_x", kHitPlaneX);
+        home_y_ = declare_parameter<double>("home_y", kHomeY);
+        paddle_y_offset_ = declare_parameter<double>("paddle_y_offset", kPaddleYOffset);
+
+        auto pred_sentinel = declare_parameter<std::vector<double>>(
+            "pred_sentinel",
+            {static_cast<double>(kPredSentinel[0]),
+             static_cast<double>(kPredSentinel[1]),
+             static_cast<double>(kPredSentinel[2])});
+        if (pred_sentinel.size() != 3) {
+            throw std::runtime_error("pred_sentinel must contain 3 values");
+        }
+        for (size_t i = 0; i < 3; ++i) {
+            pred_sentinel_[i] = static_cast<float>(pred_sentinel[i]);
+        }
+
+        auto hit_target_y = declare_parameter<std::vector<double>>(
+            "hit_target_y_range", {0.0, 0.55});
+        auto hit_target_z = declare_parameter<std::vector<double>>(
+            "hit_target_z_range", {0.90, 1.25});
+        if (hit_target_y.size() != 2 || hit_target_z.size() != 2) {
+            throw std::runtime_error("hit target ranges must contain 2 values each");
+        }
+        if (hit_target_y[0] > hit_target_y[1] || hit_target_z[0] > hit_target_z[1]) {
+            throw std::runtime_error("hit target range lower bounds must not exceed upper bounds");
+        }
+        std::copy(hit_target_y.begin(), hit_target_y.end(), hit_target_y_range_.begin());
+        std::copy(hit_target_z.begin(), hit_target_z.end(), hit_target_z_range_.begin());
+        zero_action_when_ball_invalid_ = declare_parameter<bool>("zero_action_when_ball_invalid", false);
+
         const std::vector<double> default_max_delta_per_tick{
             0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160};
         auto max_delta = declare_parameter<std::vector<double>>("max_delta_per_tick", default_max_delta_per_tick);
@@ -453,13 +499,15 @@ public:
         gate_cfg.confirm_frames = declare_parameter<int>("gate_confirm_frames", 1);
         gate_cfg.coast_frames = declare_parameter<int>("gate_coast_frames", 1);
         gate_cfg.vx_away = declare_parameter<double>("gate_min_approach_vx", -0.05);
+        gate_cfg.hit_plane_x = hit_plane_x_;
         gate_ = std::make_unique<BallValidityGate>(gate_cfg);
 
         auto ranges = softJointRanges();
         q_min_ = ranges.first;
         q_max_ = ranges.second;
         last_action_.fill(0.0f);
-        last_q_des_ = kDefaultRightQ;
+        last_q_des_ = default_right_q_;
+        last_ball_pred_ = pred_sentinel_;
         resetServoFilter(std::nullopt);
         resetPolicy(std::nullopt);
 
@@ -520,6 +568,15 @@ public:
             "policy runtime gate: topic=%s enabled=%s",
             policy_enable_topic_.c_str(),
             policy_enabled_ ? "true" : "false");
+        RCLCPP_INFO(
+            get_logger(),
+            "policy geometry: default_q=%s robot_pos=[%.3f, %.3f, %.4f] hit_plane=%.3f paddle_y_offset=%.3f sentinel=%s target_y=[%.3f, %.3f] target_z=[%.3f, %.3f] invalid_action=%s",
+            vecToString(default_right_q_).c_str(),
+            robot_table_pos_[0], robot_table_pos_[1], robot_table_pos_[2],
+            hit_plane_x_, paddle_y_offset_, vecToString(pred_sentinel_).c_str(),
+            hit_target_y_range_[0], hit_target_y_range_[1],
+            hit_target_z_range_[0], hit_target_z_range_[1],
+            zero_action_when_ball_invalid_ ? "zero" : "policy");
     }
 
     ~A1PolicyBridgeCpp() override {
@@ -544,7 +601,10 @@ private:
     }
 
     void jointCb(const sensor_msgs::msg::JointState::SharedPtr msg) {
-        auto q = orderedJointVector(msg->name, msg->position, q_.has_value() ? q_ : std::optional<std::array<double, 7>>(kDefaultRightQ));
+        auto q = orderedJointVector(
+            msg->name,
+            msg->position,
+            q_.has_value() ? q_ : std::optional<std::array<double, 7>>(default_right_q_));
         if (!q.has_value()) {
             RCLCPP_WARN_THROTTLE(
                 get_logger(), *get_clock(), 1000,
@@ -696,7 +756,9 @@ private:
             throw std::runtime_error("policy output has fewer than 7 values");
         }
         PolicyStep out;
-        for (size_t i = 0; i < 7; ++i) out.raw_action[i] = raw_vec[i];
+        for (size_t i = 0; i < 7; ++i) {
+            out.raw_action[i] = (!valid_ball && zero_action_when_ball_invalid_) ? 0.0f : raw_vec[i];
+        }
         out.q_des = actionToQDes(out.raw_action);
         out.ball_pred = last_ball_pred_;
         return out;
@@ -732,7 +794,7 @@ private:
         frame[o++] = 0.0f;
         frame[o++] = 0.0f;
         frame[o++] = -1.0f;
-        for (size_t i = 0; i < 7; ++i) frame[o++] = static_cast<float>(q[i] - kDefaultRightQ[i]);
+        for (size_t i = 0; i < 7; ++i) frame[o++] = static_cast<float>(q[i] - default_right_q_[i]);
         for (double v : dq) frame[o++] = static_cast<float>(v);
         for (float v : last_action_) frame[o++] = v;
 
@@ -740,12 +802,13 @@ private:
         last_ball_pred_ = ball_pred;
         const std::array<float, 3> ball_obs = valid_ball
             ? std::array<float, 3>{static_cast<float>(ball_pos[0]), static_cast<float>(ball_pos[1]), static_cast<float>(ball_pos[2])}
-            : kPredSentinel;
+            : pred_sentinel_;
         for (float v : ball_obs) frame[o++] = v;
-        for (float v : kRobotTablePos) frame[o++] = v;
+        for (float v : robot_table_pos_) frame[o++] = v;
         for (float v : ball_pred) frame[o++] = v;
-        frame[o++] = static_cast<float>((ball_pred[0] - 0.1f) - kRobotTablePos[0]);
-        frame[o++] = static_cast<float>((ball_pred[1] - static_cast<float>(kPaddleYOffset)) - kRobotTablePos[1]);
+        frame[o++] = static_cast<float>((ball_pred[0] - 0.1f) - robot_table_pos_[0]);
+        frame[o++] = static_cast<float>(
+            (ball_pred[1] - static_cast<float>(paddle_y_offset_)) - robot_table_pos_[1]);
         frame[o++] = 0.0f;
         if (o != static_cast<size_t>(kFrameSize)) {
             throw std::runtime_error("bad frame size");
@@ -761,8 +824,7 @@ private:
         if (predictor_ && valid_ball && finite3(ball_pos)) {
             auto pred = runPredictor(ball_pos);
             if (plausiblePrediction(pred)) {
-                pred[0] = static_cast<float>(kHitPlaneX);
-                return pred;
+                return projectPrediction(pred);
             }
         } else if (!valid_ball) {
             predictor_history_.clear();
@@ -787,33 +849,47 @@ private:
             input.insert(input.end(), row.begin(), row.end());
         }
         const auto out = predictor_->runSingle(input);
-        if (out.size() < 3) return kPredSentinel;
+        if (out.size() < 3) return pred_sentinel_;
         return {out[0], out[1], out[2]};
     }
 
-    static bool plausiblePrediction(const std::array<float, 3>& pred) {
-        const float y_center = static_cast<float>(kHomeY + kPaddleYOffset);
+    bool plausiblePrediction(const std::array<float, 3>& pred) const {
+        const float y_center = static_cast<float>(home_y_ + paddle_y_offset_);
         return finite3f(pred)
-            && pred[0] > static_cast<float>(kHitPlaneX - 0.50)
-            && pred[0] < static_cast<float>(kHitPlaneX + 0.30)
+            && pred[0] > static_cast<float>(hit_plane_x_ - 0.50)
+            && pred[0] < static_cast<float>(hit_plane_x_ + 0.30)
             && std::abs(pred[1] - y_center) < 0.45f
             && pred[2] > 0.85f
             && pred[2] < 1.55f;
     }
 
-    static std::array<float, 3> analyticPrediction(
+    std::array<float, 3> projectPrediction(std::array<float, 3> pred) const {
+        pred[0] = static_cast<float>(hit_plane_x_);
+        pred[1] = clampFloat(
+            pred[1],
+            static_cast<float>(hit_target_y_range_[0]),
+            static_cast<float>(hit_target_y_range_[1]));
+        pred[2] = clampFloat(
+            pred[2],
+            static_cast<float>(hit_target_z_range_[0]),
+            static_cast<float>(hit_target_z_range_[1]));
+        return pred;
+    }
+
+    std::array<float, 3> analyticPrediction(
         const std::array<double, 3>& ball_pos,
         const std::array<double, 3>& ball_vel,
-        bool valid_ball) {
-        if (!valid_ball || !finite3(ball_pos) || ball_vel[0] >= -0.05) return kPredSentinel;
-        const double t = (kHitPlaneX - ball_pos[0]) / ball_vel[0];
-        if (t <= 0.0 || t > 2.0) return kPredSentinel;
+        bool valid_ball) const {
+        if (!valid_ball || !finite3(ball_pos) || ball_vel[0] >= -0.05) return pred_sentinel_;
+        const double t = (hit_plane_x_ - ball_pos[0]) / ball_vel[0];
+        if (t <= 0.0 || t > 2.0) return pred_sentinel_;
         std::array<double, 3> pred{
             ball_pos[0] + ball_vel[0] * t,
             ball_pos[1] + ball_vel[1] * t,
             ball_pos[2] + ball_vel[2] * t - 0.5 * kGravity * t * t};
-        if (pred[2] < 0.2 || pred[2] > 2.0) return kPredSentinel;
-        return {static_cast<float>(pred[0]), static_cast<float>(pred[1]), static_cast<float>(pred[2])};
+        if (pred[2] < 0.2 || pred[2] > 2.0) return pred_sentinel_;
+        return projectPrediction(
+            {static_cast<float>(pred[0]), static_cast<float>(pred[1]), static_cast<float>(pred[2])});
     }
 
     std::array<double, 7> actionToQDes(const std::array<float, 7>& raw_action) {
@@ -827,11 +903,11 @@ private:
         std::array<double, 7> q_des{};
         for (size_t i = 0; i < 7; ++i) {
             if (zmask[i]) {
-                q_des[i] = kDefaultRightQ[i];  // freeze to default, ignore policy
+                q_des[i] = default_right_q_[i];  // freeze to default, ignore policy
                 continue;
             }
             const double a = clampDouble(raw_action[i], -kClipActions, kClipActions);
-            q_des[i] = clampDouble(a * kActionScale + kDefaultRightQ[i], q_min_[i], q_max_[i]);
+            q_des[i] = clampDouble(a * kActionScale + default_right_q_[i], q_min_[i], q_max_[i]);
         }
         last_q_des_ = q_des;
         return q_des;
@@ -850,7 +926,7 @@ private:
         last_action_.fill(0.0f);
         if (q.has_value()) last_q_des_ = q.value();
         history_.clear();
-        std::array<double, 7> q0 = q.value_or(kDefaultRightQ);
+        std::array<double, 7> q0 = q.value_or(default_right_q_);
         std::array<double, 7> dq0{};
         std::array<double, 3> zero3{0.0, 0.0, 0.0};
         const auto frame = computeFrame(q0, dq0, zero3, zero3, false);
@@ -872,7 +948,7 @@ private:
     }
 
     void resetServoFilter(const std::optional<std::array<double, 7>>& q) {
-        servo_q_cmd_ = clampJointLimits(q.value_or(kDefaultRightQ));
+        servo_q_cmd_ = clampJointLimits(q.value_or(default_right_q_));
         servo_dq_cmd_.fill(0.0);
         servo_filter_initialized_ = q.has_value();
         last_pub_q_ = servo_q_cmd_;
@@ -1016,6 +1092,15 @@ private:
     std::string policy_enable_topic_;
     std::string joint_state_topic_;
     std::string ball_state_topic_;
+    std::array<double, 7> default_right_q_ = kDefaultRightQ;
+    std::array<float, 3> robot_table_pos_ = kRobotTablePos;
+    double hit_plane_x_ = kHitPlaneX;
+    double home_y_ = kHomeY;
+    double paddle_y_offset_ = kPaddleYOffset;
+    std::array<float, 3> pred_sentinel_ = kPredSentinel;
+    std::array<double, 2> hit_target_y_range_{0.0, 0.55};
+    std::array<double, 2> hit_target_z_range_{0.90, 1.25};
+    bool zero_action_when_ball_invalid_ = false;
 
     std::unique_ptr<OrtRunner> policy_;
     std::unique_ptr<OrtRunner> predictor_;

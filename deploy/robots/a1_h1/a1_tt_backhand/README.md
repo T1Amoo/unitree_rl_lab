@@ -22,6 +22,17 @@ Run the viewer:
 deploy/robots/a1_h1/a1_tt_backhand/run_sim2sim.sh
 ```
 
+After building `sim2real_bridge_cpp`, run the real camera pipeline with:
+
+```bash
+ros2 launch sim2real_bridge_cpp a1_tt_backhand_9700_camera.launch.py
+```
+
+The real launch starts in `PASSIVE`, consumes `/pingpong_location`, uses the
+base-9700 table frame without the legacy `y+0.76` offset, and shapes commands
+with the per-joint first-order `servo_tau_s` filter. The hard q-des slew branch
+is explicitly disabled.
+
 Run a deterministic headless check:
 
 ```bash
