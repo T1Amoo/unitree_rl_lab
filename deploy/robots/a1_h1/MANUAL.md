@@ -1588,19 +1588,23 @@ journalctl -u pingpong-detect.service -n 120 --no-pager -o cat \
 
 ### 12.4 Jetson SDK/运行环境基线快照
 
-上线曝光年龄锁之前已保存完整可比对快照（源码、build/install 二进制、配置、systemd、动态库、JetPack/CUDA/dpkg、网络、权重 hash 和日志清单；没有复制 5.4 GB 原始 yellow_log）：
+已保存两份完整可比对快照（源码、build/install 二进制、配置、systemd、动态库、JetPack/CUDA/dpkg、网络、权重 hash 和日志清单；没有复制 5.4 GB 原始 yellow_log）。`pre` 专门用于复盘这次 age-lock 改动；今后判断稳定部署环境是否漂移，以 `post` 为基线：
 
 ```text
 /home/jetson/snapshots/a1_camera_sdk_20260801_1805_pre_age_lock.tar.gz
 SHA256: 6b70091429b68962b4de329b76050df24c8547d88671e148505e05b14ef8ff67
+
+/home/jetson/snapshots/a1_camera_sdk_20260801_1835_post_age_lock.tar.gz
+SHA256: 05378f45ae996fef3a105a0e3a54ff7b0cbc09e582245123d117cfc9708a6bd6
 ```
 
-每次比较环境前先验 hash，不要覆盖这个基线：
+每次比较环境前先验 hash，不要覆盖这两个基线：
 
 ```bash
 cd /home/jetson/snapshots
 sha256sum -c a1_camera_sdk_20260801_1805_pre_age_lock.tar.gz.sha256
-tar -tzf a1_camera_sdk_20260801_1805_pre_age_lock.tar.gz | less
+sha256sum -c a1_camera_sdk_20260801_1835_post_age_lock.tar.gz.sha256
+tar -tzf a1_camera_sdk_20260801_1835_post_age_lock.tar.gz | less
 ```
 
 ### 12.5 本机：编译并一次启动 ball bridge + FSM + policy bridge
