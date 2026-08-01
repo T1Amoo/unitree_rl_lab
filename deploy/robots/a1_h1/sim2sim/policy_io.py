@@ -138,7 +138,8 @@ DAMIAO_MIT_EFFORT = np.array([28.0, 28.0, 28.0, 8.0, 8.0, 8.0, 8.0], dtype=np.fl
 DAMIAO_MIT_VEL = np.array([8.0, 8.0, 8.0, 20.0, 20.0, 20.0, 20.0], dtype=np.float64)
 DAMIAO_MIT_BRAKE_EFFORT = DAMIAO_MIT_EFFORT.copy()
 
-HIT_PLANE_X = -1.58
+# Keep the predictor/marker intercept plane aligned with A1 TT v12+ training.
+HIT_PLANE_X = -1.62
 HOME_Y = 0.76
 PADDLE_Y_OFFSET = -0.72
 HIT_BODY_HEIGHT = 0.028
