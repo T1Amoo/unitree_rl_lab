@@ -1,0 +1,23 @@
+deploy/robots/a1_h1/jetson_camera/main_graph_exposure_age_lock.patch
+  s_d7bdfbc037e805::t_0ba765d864d3fe 17,118
+deploy/robots/a1_h1/jetson_camera/detect_config_a1_backhand.yaml
+  s_d7bdfbc037e805::t_0ba765d864d3fe 9-12
+deploy/robots/a1_h1/jetson_camera/README.md
+  s_d7bdfbc037e805::t_0ba765d864d3fe 22-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "6c86bc7393fbc666f36bd49ba22aee583a74cf2c",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
