@@ -1,0 +1,19 @@
+deploy/robots/a1_h1/sim2sim/policy_io.py
+  s_d7bdfbc037e805::t_30ebbc7b8de2bb 141-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "812ef10e7705a8e7fa0a30f1e47c40bb79625b7f",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
