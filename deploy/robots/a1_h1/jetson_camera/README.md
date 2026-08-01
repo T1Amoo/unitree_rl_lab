@@ -21,5 +21,9 @@ The overlay does four things:
    policy-relevant world corridor;
 4. moves per-frame logs to DEBUG so journald does not compete with inference.
 
+Build the patched package in `/home/jetson/pingpong/ros2_ws`; the tracked
+systemd drop-in then selects that July workspace instead of the stale June
+binary under `/home/jetson/pingpong/install`.
+
 Apply/build/restart only while the robot policy is disabled. Keep the old
 source and installed binary as recoverable artifacts; never delete them.
