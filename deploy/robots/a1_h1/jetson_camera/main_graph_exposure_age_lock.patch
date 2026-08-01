@@ -14,7 +14,7 @@ diff --git a/src/main_graph.cpp b/src/main_graph.cpp
          apriltag_mode_ = config["apriltag"]["mode"].as<std::string>("once");
          drain_buffer_ = config["drain_buffer"].as<bool>(true);
 +        fresh_frame_max_age_ms_ = std::max(
-+            1.0, config["fresh_frame"]["max_source_age_ms"].as<double>(25.0));
++            1.0, config["fresh_frame"]["max_source_age_ms"].as<double>(35.0));
 +        fresh_frame_future_tolerance_ms_ = std::max(
 +            0.0, config["fresh_frame"]["future_tolerance_ms"].as<double>(5.0));
 +        fresh_frame_max_grabs_ = std::max(
@@ -115,7 +115,7 @@ diff --git a/src/main_graph.cpp b/src/main_graph.cpp
      cv::Mat F_;
      bool use_world_frame_ = true;
      bool drain_buffer_ = true;
-+    double fresh_frame_max_age_ms_ = 25.0;
++    double fresh_frame_max_age_ms_ = 35.0;
 +    double fresh_frame_future_tolerance_ms_ = 5.0;
 +    int fresh_frame_max_grabs_ = 8;
 +    bool freshness_locked_ = false;

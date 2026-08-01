@@ -6,9 +6,10 @@ confidence_threshold: 0.5
 nms_threshold: 0.45
 drain_buffer: true
 fresh_frame:
-  # ZED IMAGE exposure timestamp -> Jetson wall clock. Inference is never run
-  # on a frame above this age; up to max_grabs buffered frames are discarded.
-  max_source_age_ms: 25.0
+  # ZED IMAGE exposure timestamp -> Jetson wall clock. The measured floor of
+  # this ZED HD1080@60 path is 23.5-27.4 ms, so 35 ms rejects buffered frames
+  # without discarding normal newest exposures. Up to max_grabs are drained.
+  max_source_age_ms: 35.0
   future_tolerance_ms: 5.0
   max_grabs: 8
 

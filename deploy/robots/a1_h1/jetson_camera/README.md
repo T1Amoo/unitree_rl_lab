@@ -19,8 +19,10 @@ The overlays do five things:
 
 1. drains already-buffered ZED frames before inference;
 2. closes the freshness loop on the ZED IMAGE exposure timestamp: inference is
-   allowed only when source age is at most 25 ms; a callback is dropped after
-   eight unsuccessful grabs instead of publishing a stale frame;
+   allowed only when source age is at most 35 ms; this is above the measured
+   23.5--27.4 ms newest-frame floor, while still rejecting the old ~80 ms SDK
+   backlog. A callback is dropped after eight unsuccessful grabs instead of
+   publishing a stale frame;
 3. locks AprilTag calibration after startup;
 4. rechecks epipolar geometry after sub-pixel refinement and tightens the
    policy-relevant world corridor;
