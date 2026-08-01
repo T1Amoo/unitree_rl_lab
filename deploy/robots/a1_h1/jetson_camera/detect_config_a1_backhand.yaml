@@ -5,6 +5,12 @@ engine_path: "/home/jetson/pingpong/ros2_ws/src/pingpong_detect/weights/filter/t
 confidence_threshold: 0.5
 nms_threshold: 0.45
 drain_buffer: true
+fresh_frame:
+  # ZED IMAGE exposure timestamp -> Jetson wall clock. Inference is never run
+  # on a frame above this age; up to max_grabs buffered frames are discarded.
+  max_source_age_ms: 25.0
+  future_tolerance_ms: 5.0
+  max_grabs: 8
 
 triangulation:
   method: "ray_intersection"

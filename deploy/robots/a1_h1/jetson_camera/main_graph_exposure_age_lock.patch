@@ -1,0 +1,127 @@
+diff --git a/src/main_graph.cpp b/src/main_graph.cpp
+--- a/src/main_graph.cpp
++++ b/src/main_graph.cpp
+@@ -4,6 +4,7 @@
+ #include <opencv2/opencv.hpp>
+ #include <yaml-cpp/yaml.h>
+ #include <chrono>
++#include <algorithm>
+ #include <sys/stat.h>
+ #include <termios.h>
+ #include <unistd.h>
+@@ -39,6 +40,12 @@ public:
+         use_world_frame_ = config["use_world_frame"].as<bool>(true);
+         apriltag_mode_ = config["apriltag"]["mode"].as<std::string>("once");
+         drain_buffer_ = config["drain_buffer"].as<bool>(true);
++        fresh_frame_max_age_ms_ = std::max(
++            1.0, config["fresh_frame"]["max_source_age_ms"].as<double>(25.0));
++        fresh_frame_future_tolerance_ms_ = std::max(
++            0.0, config["fresh_frame"]["future_tolerance_ms"].as<double>(5.0));
++        fresh_frame_max_grabs_ = std::max(
++            1, config["fresh_frame"]["max_grabs"].as<int>(8));
+         std::string tag_coords_path = config["apriltag"]["tag_world_coords_path"].as<std::string>("");
+ 
+         bool record_enabled = config["record"]["enabled"].as<bool>(false);
+@@ -326,26 +333,60 @@ private:
+             }
+         }
+ 
+-        auto t_before_grab = std::chrono::high_resolution_clock::now();
+-        if (zed_.grab() != sl::ERROR_CODE::SUCCESS) return;
+-        auto t_after_grab = std::chrono::high_resolution_clock::now();
+-        const double first_grab_ms = std::chrono::duration<double, std::milli>(
+-            t_after_grab - t_before_grab).count();
+-        // A fast first grab means the ZED SDK returned an already-buffered
+-        // frame. Drain all immediately available frames before inference so
+-        // the published image timestamp is the newest one.
+-        if (drain_buffer_ && first_grab_ms < 2.0) {
+-            while (true) {
+-                const auto t0 = std::chrono::high_resolution_clock::now();
+-                if (zed_.grab() != sl::ERROR_CODE::SUCCESS) break;
+-                const double grab_ms = std::chrono::duration<double, std::milli>(
+-                    std::chrono::high_resolution_clock::now() - t0).count();
+-                if (grab_ms > 2.0) break;
+-            }
++        // Close the loop on the ZED IMAGE exposure timestamp.  Grab duration is
++        // not a freshness signal: at startup a blocking grab can still return a
++        // frame that is four SDK buffers old.  Never run inference on a frame
++        // older than the configured age; drain up to max_grabs, and drop this
++        // callback if a fresh frame still cannot be obtained.
++        uint64_t grab_ts_ns = 0;
++        double source_age_ms = 1.0e9;
++        double grab_total_ms = 0.0;
++        int fresh_grabs = 0;
++        while (fresh_grabs < fresh_frame_max_grabs_) {
++            const auto grab_begin = std::chrono::steady_clock::now();
++            if (zed_.grab() != sl::ERROR_CODE::SUCCESS) return;
++            grab_total_ms += std::chrono::duration<double, std::milli>(
++                std::chrono::steady_clock::now() - grab_begin).count();
++            ++fresh_grabs;
++
++            grab_ts_ns = zed_.getTimestamp(
++                sl::TIME_REFERENCE::IMAGE).getNanoseconds();
++            const uint64_t now_ns = static_cast<uint64_t>(
++                std::chrono::duration_cast<std::chrono::nanoseconds>(
++                    std::chrono::system_clock::now().time_since_epoch()).count());
++            source_age_ms = (static_cast<double>(now_ns)
++                - static_cast<double>(grab_ts_ns)) * 1.0e-6;
++            const bool timestamp_valid = grab_ts_ns != 0
++                && source_age_ms >= -fresh_frame_future_tolerance_ms_;
++            if (!drain_buffer_
++                || (timestamp_valid && source_age_ms <= fresh_frame_max_age_ms_)) {
++                break;
++            }
++        }
++
++        const bool fresh = grab_ts_ns != 0
++            && source_age_ms >= -fresh_frame_future_tolerance_ms_
++            && source_age_ms <= fresh_frame_max_age_ms_;
++        if (drain_buffer_ && !fresh) {
++            freshness_locked_ = false;
++            ++stale_frame_drop_count_;
++            RCLCPP_WARN_THROTTLE(
++                get_logger(), *get_clock(), 1000,
++                "[FRESH] drop stale ZED frame: age=%.2fms grabs=%d/%d drops=%zu",
++                source_age_ms, fresh_grabs, fresh_frame_max_grabs_,
++                stale_frame_drop_count_);
++            return;
++        }
++        if (!freshness_locked_) {
++            RCLCPP_INFO(
++                get_logger(),
++                "[FRESH] locked latest ZED frame: age=%.2fms grabs=%d threshold=%.2fms",
++                source_age_ms, fresh_grabs, fresh_frame_max_age_ms_);
+         }
+-        const uint64_t grab_ts_ns = zed_.getTimestamp(sl::TIME_REFERENCE::IMAGE).getNanoseconds();
++        freshness_locked_ = true;
++        last_source_age_ms_ = source_age_ms;
++        last_fresh_grabs_ = fresh_grabs;
+         auto t_grab = std::chrono::high_resolution_clock::now();
+ 
+         zed_.retrieveImage(sl_left_gpu_, sl::VIEW::LEFT, sl::MEM::GPU);
+@@ -599,8 +640,10 @@ private:
+ 
+         if (frame_count_ % 60 == 0) {
+             double avg = total_ms_ / 60.0;
+-            RCLCPP_INFO(get_logger(), "[GRAPH] avg %.2fms/frame (%.1f FPS) | pos: [%.3f, %.3f, %.3f]",
+-                        avg, 1000.0 / avg, position_m[0], position_m[1], position_m[2]);
++            RCLCPP_INFO(get_logger(), "[GRAPH] avg %.2fms/frame (%.1f FPS) | source_age=%.2fms grabs=%d stale_drop=%zu | pos: [%.3f, %.3f, %.3f]",
++                        avg, 1000.0 / avg, last_source_age_ms_, last_fresh_grabs_,
++                        stale_frame_drop_count_, position_m[0], position_m[1], position_m[2]);
+             total_ms_ = 0;
+         }
+     }
+@@ -617,6 +660,13 @@ private:
+     cv::Mat F_;
+     bool use_world_frame_ = true;
+     bool drain_buffer_ = true;
++    double fresh_frame_max_age_ms_ = 25.0;
++    double fresh_frame_future_tolerance_ms_ = 5.0;
++    int fresh_frame_max_grabs_ = 8;
++    bool freshness_locked_ = false;
++    double last_source_age_ms_ = 0.0;
++    int last_fresh_grabs_ = 0;
++    size_t stale_frame_drop_count_ = 0;
+     std::string apriltag_mode_ = "once";
+     float conf_thresh_ = 0.5f;
+     float nms_thresh_ = 0.45f;
