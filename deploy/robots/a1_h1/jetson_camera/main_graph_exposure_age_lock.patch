@@ -22,7 +22,7 @@ diff --git a/src/main_graph.cpp b/src/main_graph.cpp
          std::string tag_coords_path = config["apriltag"]["tag_world_coords_path"].as<std::string>("");
  
          bool record_enabled = config["record"]["enabled"].as<bool>(false);
-@@ -326,26 +333,60 @@ private:
+@@ -326,24 +333,59 @@ private:
              }
          }
  
@@ -99,7 +99,7 @@ diff --git a/src/main_graph.cpp b/src/main_graph.cpp
          auto t_grab = std::chrono::high_resolution_clock::now();
  
          zed_.retrieveImage(sl_left_gpu_, sl::VIEW::LEFT, sl::MEM::GPU);
-@@ -599,8 +640,10 @@ private:
+@@ -591,8 +633,9 @@ private:
  
          if (frame_count_ % 60 == 0) {
              double avg = total_ms_ / 60.0;
