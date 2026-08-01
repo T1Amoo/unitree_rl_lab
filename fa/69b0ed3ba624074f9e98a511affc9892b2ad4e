@@ -1,0 +1,30 @@
+deploy/robots/a1_h1/src/a1_policy_bridge_cpp.cpp
+  s_d7bdfbc037e805::t_a2b81306713ed8 770-771,779-780,823-826,846-849,864-865,878-879,901-906,908,913,1016
+deploy/robots/a1_h1/launch/a1_tt_backhand_9700_camera.launch.py
+  s_d7bdfbc037e805::t_a2b81306713ed8 56-59,153-156
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/policy_io.py
+  s_d7bdfbc037e805::t_a2b81306713ed8 171-172,343-349,351-353,359-367,372-373,401-409
+deploy/robots/a1_h1/a1_tt_backhand/README.md
+  s_d7bdfbc037e805::t_a2b81306713ed8 38,46-49
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/test_a1_sim2sim.py
+  s_d7bdfbc037e805::t_7e648a583c5cae 356-359,381-382
+  s_d7bdfbc037e805::t_f1d77ef23fecf2 341-355,360-380,383-384
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/run_a1_tt_sim2sim.py
+  s_d7bdfbc037e805::t_a2b81306713ed8 501-506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "fa69b0ed3ba624074f9e98a511affc9892b2ad4e",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
