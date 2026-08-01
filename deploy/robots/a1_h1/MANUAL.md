@@ -1,7 +1,9 @@
 # A1/H1 乒乓 Sim2Real C++ Bridge — 完整命令行手册
 
 覆盖 **策略导出 / C++ ONNX bridge / ROS dry-run / sim2real 真机接入** 全流程命令。
-最后更新 2026-07-27（新增第 11 节：相机版 CycloneDDS 三机实机流程 + 限幅机制澄清）。
+最后更新 2026-08-01（新增第 12 节：当前反手 9700 三机启动、曝光年龄闭环、SDK 快照与训练/部署参数合同）。
+
+> **当前启动一律以第 12 节为准。** 第 11 节保留为 2026-07-25 的历史记录，其中旧 IP、正手坐标和旧反手 10999 参数不要再用于当前真机。
 
 > 路径约定
 > - 训练仓库：`/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/`
@@ -1406,3 +1408,314 @@ else                              # 默认走这支：一阶滤波
 
 FSM 侧用参数覆盖即可（不必改源码）：`-p default_q:="[1.769,-0.762,-1.863,1.445,0.206,-0.827,1.043]"`。
 反手包**没有 predictor.onnx**，用 `-p use_predictor:=true -p predictor_path:=<正手 v7 predictor>`（球飞行物理与正反手无关，正手 predictor 通用，比 analytic 抛物线 fallback 更准）。
+
+---
+
+## 12. 当前反手 9700 相机真机启动（2026-08-01，权威流程）
+
+本节对应当前已经实机验证的三机栈，替代第 11 节的旧正手流程：
+
+| 机器 | 地址/账号 | ROS | 职责 |
+|---|---|---|---|
+| 本机 | `192.168.1.150` | Humble | camera ball bridge、FSM、ONNX policy bridge、录制 |
+| A1 机器人 | `192.168.1.102` / `wlab` | Jazzy | 100 Hz DAMIAO SDK 位置控制 |
+| Jetson 相机机 | `192.168.1.231` / `jetson` | Humble | ZED HD1080@60 检测、曝光年龄锁、发布 `/pingpong_location` |
+
+当前冻结策略：
+
+```text
+Pingpong_TTRL/pretrained/a1_tt_backhand/base_9700_hitplane020/
+```
+
+当前控制合同：
+
+- 只发 7 维 `q_des`；真机 SDK 的 `dq_des=0`、`tau_ff=0`；
+- policy 50 Hz，机器人 SDK 100 Hz，底层 `interpolation_mode=none`；
+- 动作整形只走一阶 `tau_s` 路线，`qdes_slew_enabled=false`；
+- `tau_s=[0.10,0.10,0.08,0.10,0.05,0.05,0.10] s`；
+- 对应速度上限 `[1.0,1.2,1.8,1.6,4.0,3.2,8.0] rad/s`；
+- 机器人端 `max_delta_per_cycle=[0.08,0.08,0.08,0.16,0.16,0.16,0.16]` 只保留为 SDK 最外层安全兜底。正常 `tau_s + velocity_limit` 输出逐步变化小于或等于该阈值，因此它不是当前轨迹生成路线。
+
+### 12.1 三机网络和 DDS 前置检查
+
+本机只允许有线口 `enp8s0` 承载机器人/相机 DDS：
+
+```bash
+ip -br addr show enp8s0
+ip route get 192.168.1.102
+ip route get 192.168.1.231
+ping -c 2 192.168.1.102
+ping -c 2 192.168.1.231
+```
+
+两条 route 都必须显示 `dev enp8s0 src 192.168.1.150`。建立本机 DDS 配置：
+
+```bash
+cat >/tmp/cyclonedds_a1_backhand.xml <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <Interfaces><NetworkInterface name="enp8s0"/></Interfaces>
+      <AllowMulticast>true</AllowMulticast>
+    </General>
+    <Discovery>
+      <Peers>
+        <Peer address="192.168.1.102"/>
+        <Peer address="192.168.1.231"/>
+      </Peers>
+      <ParticipantIndex>auto</ParticipantIndex>
+    </Discovery>
+  </Domain>
+</CycloneDDS>
+EOF
+```
+
+每个本机 ROS 终端都先执行：
+
+```bash
+unset PYTHONPATH CONDA_PREFIX CONDA_DEFAULT_ENV
+export PATH=/opt/ros/humble/bin:/home/woan/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+source /opt/ros/humble/setup.bash
+export ROS_DOMAIN_ID=0
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=file:///tmp/cyclonedds_a1_backhand.xml
+```
+
+### 12.2 A1 机器人端：DAMIAO SDK 节点
+
+登录并先确认当前节点是否已在运行：
+
+```bash
+ssh wlab@192.168.1.102
+pgrep -af 'inference_arm_control_node'
+udevadm info -q property -n /dev/ttyACM1 | grep -E 'ID_VENDOR|ID_MODEL|ID_SERIAL'
+```
+
+如果节点已经按下面的参数运行，不要重复启动。若机器人重启后节点不存在，在机器人端执行：
+
+```bash
+tmux new-session -d -s a1_backhand_armcontrol \
+  "bash -lc 'source /home/wlab/pingpong/install/setup.bash; \
+  export ROS_DOMAIN_ID=0; \
+  export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp; \
+  export CYCLONEDDS_URI=file:///home/wlab/cyclonedds.xml; \
+  exec ros2 run armcontrol inference_arm_control_node --ros-args \
+  --params-file /home/wlab/pingpong/install/armcontrol/share/armcontrol/config/inference_arm_control_node.yaml \
+  -p controlled_arms:=right \
+  -p control_rate_hz:=100.0 \
+  -p expected_action_rate_hz:=50.0 \
+  -p action_topic:=/model_action \
+  -p enable_topic:=/model_control/enable \
+  -p servo_enabled_on_start:=false \
+  -p enable_motors_on_start:=false \
+  -p right_arm_device:=/dev/ttyACM1 \
+  -p action_format:=auto \
+  -p interpolation_mode:=none \
+  -p kps:=[300.0,300.0,300.0,120.0,120.0,120.0,60.0] \
+  -p kds:=[3.5,3.5,3.5,1.0,1.0,1.0,0.5] \
+  -p torque_ff_scale:=[0.0,0.0,0.0,0.0,0.0,0.0,0.0] \
+  -p enable_mit_velocity:=false \
+  -p max_delta_per_cycle:=[0.08,0.08,0.08,0.16,0.16,0.16,0.16] \
+  > /tmp/a1_backhand_armcontrol.log 2>&1'"
+```
+
+确认节点、串口和关节反馈：
+
+```bash
+pgrep -af 'inference_arm_control_node'
+tail -n 80 /tmp/a1_backhand_armcontrol.log
+source /home/wlab/pingpong/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=file:///home/wlab/cyclonedds.xml
+timeout 5 ros2 topic hz /right_joint_states
+```
+
+### 12.3 Jetson：相机补丁、编译、服务和曝光年龄闭环
+
+先同步版本化 overlay。代码同步只能用 Git：
+
+```bash
+ssh jetson@192.168.1.231
+cd /home/jetson/unitree_rl_lab_lgy
+git pull --ff-only origin g1-tt-sim2sim
+```
+
+首次把 overlay 应用到相机源码时执行；如果第一条 `grep` 已找到标记，则不要重复 apply：
+
+```bash
+CAM_SRC=/home/jetson/pingpong/ros2_ws/src/pingpong_detect
+AGE_PATCH=/home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera/main_graph_exposure_age_lock.patch
+cd "$CAM_SRC"
+grep -n 'fresh_frame.*max_source_age_ms' src/main_graph.cpp || {
+  git apply --check "$AGE_PATCH" && git apply "$AGE_PATCH"
+}
+```
+
+编译 C++ 包：
+
+```bash
+cd /home/jetson/pingpong/ros2_ws
+source /opt/ros/humble/setup.bash
+colcon build --packages-select pingpong_detect --symlink-install
+```
+
+Jetson 当前 `/usr/local/lib/python3.10/dist-packages/cython-3.2.5.dist-info` 权限会让 colcon 打印 Python extension warning；只要最终是 `Summary: 1 package finished` 就不影响这个 C++ 包。不要为了消 warning 临时改 SDK 环境。
+
+重启相机服务前，本机必须确认 FSM 是 `PASSIVE` 或 `DAMPING`，不能在 `FIXSTAND/READY/TABLE_TENNIS` 时重启：
+
+```bash
+# 本机 ROS 终端
+ros2 topic echo /a1_tt/fsm_state --once
+```
+
+确认安全后在 Jetson 执行：
+
+```bash
+sudo systemctl restart pingpong-detect.service
+systemctl status pingpong-detect.service --no-pager -l
+journalctl -u pingpong-detect.service -n 120 --no-pager -o cat \
+  | grep -E '\[FRESH\]|\[GRAPH\]|ZED|ERROR|WARN'
+```
+
+曝光年龄闭环的含义不是给观测固定减 `80 ms`：节点读取每一帧的 ZED `TIME_REFERENCE::IMAGE` 曝光时间戳，用 Jetson wall clock 计算 source age。年龄超过 `35 ms` 时继续 drain，最多 8 次；仍不新鲜则本帧不进 TensorRT、也不发布。2026-08-01 实测新鲜硬件底噪为 `23.5--27.4 ms`，服务重启后的锁定日志为：
+
+```text
+[FRESH] locked latest ZED frame: age=26.42ms grabs=1 threshold=35.00ms
+```
+
+健康判据：能看到一次 `[FRESH] locked`，运行中没有持续增长的 `drop stale`；检测到球时，周期 `[GRAPH]` 行应带 `source_age/grabs/stale_drop`。
+
+### 12.4 Jetson SDK/运行环境基线快照
+
+上线曝光年龄锁之前已保存完整可比对快照（源码、build/install 二进制、配置、systemd、动态库、JetPack/CUDA/dpkg、网络、权重 hash 和日志清单；没有复制 5.4 GB 原始 yellow_log）：
+
+```text
+/home/jetson/snapshots/a1_camera_sdk_20260801_1805_pre_age_lock.tar.gz
+SHA256: 6b70091429b68962b4de329b76050df24c8547d88671e148505e05b14ef8ff67
+```
+
+每次比较环境前先验 hash，不要覆盖这个基线：
+
+```bash
+cd /home/jetson/snapshots
+sha256sum -c a1_camera_sdk_20260801_1805_pre_age_lock.tar.gz.sha256
+tar -tzf a1_camera_sdk_20260801_1805_pre_age_lock.tar.gz | less
+```
+
+### 12.5 本机：编译并一次启动 ball bridge + FSM + policy bridge
+
+如果改过部署 C++ 或 launch，先编译：
+
+```bash
+cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
+source /opt/ros/humble/setup.bash
+colcon build --packages-select sim2real_bridge_cpp --symlink-install
+```
+
+新终端加载第 12.1 节环境后，前台启动当前冻结栈：
+
+```bash
+cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
+source install/setup.bash
+ros2 launch sim2real_bridge_cpp a1_tt_backhand_9700_camera.launch.py
+```
+
+这个 launch 同时固定：
+
+```text
+base/table = [-1.8, 0.0, 0.0282]
+ready q    = [1.450,-0.762,-2.050,1.445,0.206,-0.827,1.043]
+hit plane  = x=-1.243
+9700 target= y=[-0.025,0.107], z=[0.86,0.98]
+paddle y   = -0.03
+camera z   = table frame +0.76；没有旧版 y+0.76
+```
+
+### 12.6 安全状态顺序和诊断
+
+启动后先保持安全态：
+
+```bash
+ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'damping'}"
+ros2 topic echo /a1_tt/fsm_state --once
+```
+
+测试时严格按顺序：
+
+```bash
+# 1. DAMPING -> FIXSTAND -> READY
+ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'fixstand'}"
+ros2 topic echo /a1_tt/fsm_state --once
+
+# 2. 只有确认 state=READY、周围无人且球路安全后，才放行策略
+ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'table_tennis'}"
+
+# 3. 任意异常立即进入阻尼安全态
+ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'damping'}"
+```
+
+手柄映射：`27=FixStand`、`28=TableTennis`、`21= DAMPING`。当前 21 已不是旧文档里笼统写的 Passive。
+
+关键检查：
+
+```bash
+ros2 topic list -t | grep -E '/a1_tt|/pingpong_location|/ball/state|/right_joint_states'
+timeout 8 ros2 topic hz /pingpong_location
+timeout 8 ros2 topic hz /ball/state
+timeout 8 ros2 topic hz /right_joint_states
+ros2 topic echo /a1_tt/fsm_state --once
+ros2 topic echo /sim2real/gate --once
+ros2 param get /a1_tt_backhand_policy_bridge servo_filter_enabled
+ros2 param get /a1_tt_backhand_policy_bridge servo_tau_s
+ros2 param get /a1_tt_backhand_policy_bridge qdes_slew_enabled
+```
+
+必须看到 `servo_filter_enabled=true`、上述 7 个 `tau_s` 和 `qdes_slew_enabled=false`。
+
+### 12.7 实机宽日志录制
+
+在进入 FixStand **之前**开录，确保 ready、策略、球和执行器整段都在同一 CSV：
+
+```bash
+cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab
+source /opt/ros/humble/setup.bash
+source deploy/robots/a1_h1/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=file:///tmp/cyclonedds_a1_backhand.xml
+/usr/bin/python3 deploy/robots/a1_h1/tools/record_sim2real_trace.py \
+  --output-dir /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2real/20260801 \
+  --label a1_backhand_9700_age_lock --rate-hz 100
+```
+
+它会保存相机 source/receive 时间、滤波球状态、`q/dq/effort`、FSM/gate、raw action、低通后 q_des、完整 obs/frame 和各 topic age；每段同时生成 metadata JSON。结束用该终端 `Ctrl-C`，再检查：
+
+```bash
+ls -lht /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2real/20260801 | head
+```
+
+### 12.8 停止顺序
+
+1. 先发 `damping` 并确认 `/a1_tt/fsm_state`；
+2. 录制终端 `Ctrl-C`，确认 CSV/metadata 落盘；
+3. 本机 launch 前台 `Ctrl-C`；
+4. 相机服务通常保持运行，不需要随策略停止；
+5. 若必须停远端进程，先 `pgrep -af` 核对，再 `kill <显式 PID>`，禁止 `pkill -f`。
+
+### 12.9 反手 v1 训练合同（部署时不得漂移）
+
+反手 v1 从 9700 几何/ready/结果奖励阶梯起步，但把真实手抛球的范围纳入训练：
+
+| 项 | v1 训练值 |
+|---|---|
+| base | `(-1.8,0.0,0.0282)` |
+| ready q | `[1.450,-0.762,-2.050,1.445,0.206,-0.827,1.043]` |
+| hit plane | `x=-1.243` |
+| target y/z | `[-0.06,0.20] / [0.84,1.14]` |
+| action route | per-joint tau 一阶低通；硬 qdes rate-limit 关闭 |
+| tau DR | r1/r2/r4 `0.08--0.13`，r3 `0.065--0.105`，r5/r6 `0.04--0.065`，r7 `0.075--0.13` 秒 |
+| actuator delay | 最新 q_des->q 拟合值 `10--40 ms`，再按关节加 `±5--10 ms` episode DR；额外 ROS 相位 `0--1` 个 50 Hz tick |
+| camera | 60 Hz、2 帧 acquire、alpha-beta、一跳桌面反弹；延迟 `20--45/45--80/80--120 ms`，权重 `85/10/5%` |
+| curriculum | 0--10k easy，10k--20k 线性扩范围/速度，20k--30k full-range hold |
+
+部署新 v1 checkpoint 时，必须新建/更新对应 launch，把 v1 的 `target y/z`、default q、hit plane、tau 路线和 predictor 一起同步；不能把 v1 policy 塞进本节冻结的 9700 小目标框 launch 后直接上真机。
