@@ -1715,7 +1715,7 @@ ls -lht /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2re
 | action route | per-joint tau 一阶低通；硬 qdes rate-limit 关闭 |
 | tau DR | r1/r2/r4 `0.08--0.13`，r3 `0.065--0.105`，r5/r6 `0.04--0.065`，r7 `0.075--0.13` 秒 |
 | actuator delay | 最新 q_des->q 拟合值 `10--40 ms`，再按关节加 `±5--10 ms` episode DR；额外 ROS 相位 `0--1` 个 50 Hz tick |
-| camera | 60 Hz、2 帧 acquire、alpha-beta、一跳桌面反弹；延迟 `20--45/45--80/80--120 ms`，权重 `85/10/5%` |
+| camera | 60 Hz、2 帧 acquire、alpha-beta、一跳桌面反弹；延迟 `10--45/45--80/80--120 ms`，权重 `85/10/5%` |
 | curriculum | 0--10k easy，10k--20k 线性扩范围/速度，20k--30k full-range hold |
 
 部署新 v1 checkpoint 时，必须新建/更新对应 launch，把 v1 的 `target y/z`、default q、hit plane、tau 路线和 predictor 一起同步；不能把 v1 policy 塞进本节冻结的 9700 小目标框 launch 后直接上真机。
