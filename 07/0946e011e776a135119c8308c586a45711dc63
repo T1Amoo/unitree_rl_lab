@@ -1,0 +1,24 @@
+deploy/robots/a1_h1/sim2sim/test_a1_sim2sim.py
+  s_d7bdfbc037e805::t_3eb5a92f35e4fd 191
+deploy/robots/a1_h1/sim2sim/run_a1_tt_sim2sim.py
+  s_d7bdfbc037e805::t_3eb5a92f35e4fd 735-736
+deploy/robots/a1_h1/sim2sim/README.md
+  s_d7bdfbc037e805::t_3eb5a92f35e4fd 51-53,56,59
+  s_d7bdfbc037e805::t_08ce0bb6159982 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "070946e011e776a135119c8308c586a45711dc63",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
