@@ -1411,7 +1411,7 @@ FSM 侧用参数覆盖即可（不必改源码）：`-p default_q:="[1.769,-0.76
 
 ---
 
-## 12. 当前反手 9700 相机真机启动（2026-08-01，权威流程）
+## 12. 当前反手 v1 相机真机启动（2026-08-03，权威流程）
 
 本节对应当前已经实机验证的三机栈，替代第 11 节的旧正手流程：
 
@@ -1421,11 +1421,15 @@ FSM 侧用参数覆盖即可（不必改源码）：`-p default_q:="[1.769,-0.76
 | A1 机器人 | `192.168.1.102` / `wlab` | Jazzy | 100 Hz DAMIAO SDK 位置控制 |
 | Jetson 相机机 | `192.168.1.231` / `jetson` | Humble | ZED HD1080@60 检测、曝光年龄锁、发布 `/pingpong_location` |
 
-当前冻结策略：
+当前默认策略（反手 v1 从零训练 30k，最终 `model_29999.pt` 导出）：
 
 ```text
-Pingpong_TTRL/pretrained/a1_tt_backhand/base_9700_hitplane020/
+Pingpong_TTRL/logs/a1_tt_backhand_real_v1_y055h105/2026-08-01_11-05-58_scratch_backhand_camera_age35_tau_delay_dr_servey055h105_10k10k10k/exported/
 ```
+
+mentor `model_9700` 及其部署合同仍冻结保存在
+`Pingpong_TTRL/pretrained/a1_tt_backhand/base_9700_hitplane020/`，只作历史基线，
+不再是任何无参数入口的默认策略。
 
 当前控制合同：
 
@@ -1617,12 +1621,12 @@ source /opt/ros/humble/setup.bash
 colcon build --packages-select sim2real_bridge_cpp --symlink-install
 ```
 
-新终端加载第 12.1 节环境后，前台启动当前冻结栈：
+新终端加载第 12.1 节环境后，前台启动当前默认反手栈：
 
 ```bash
 cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
 source install/setup.bash
-ros2 launch sim2real_bridge_cpp a1_tt_backhand_9700_camera.launch.py
+ros2 launch sim2real_bridge_cpp a1_policy_bridge_cpp.launch.py
 ```
 
 这个 launch 同时固定：
@@ -1631,7 +1635,7 @@ ros2 launch sim2real_bridge_cpp a1_tt_backhand_9700_camera.launch.py
 base/table = [-1.8, 0.0, 0.0282]
 ready q    = [1.450,-0.762,-2.050,1.445,0.206,-0.827,1.043]
 hit plane  = x=-1.243
-9700 target= y=[-0.025,0.107], z=[0.86,0.98]
+v1 target  = y=[-0.06,0.20], z=[0.84,1.14]
 paddle y   = -0.03
 camera z   = table frame +0.76；没有旧版 y+0.76
 ```
@@ -1689,7 +1693,7 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI=file:///tmp/cyclonedds_a1_backhand.xml
 /usr/bin/python3 deploy/robots/a1_h1/tools/record_sim2real_trace.py \
   --output-dir /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2real/20260801 \
-  --label a1_backhand_9700_age_lock --rate-hz 100
+  --label a1_backhand_v1_29999_age_lock --rate-hz 100
 ```
 
 它会保存相机 source/receive 时间、滤波球状态、`q/dq/effort`、FSM/gate、raw action、低通后 q_des、完整 obs/frame 和各 topic age；每段同时生成 metadata JSON。结束用该终端 `Ctrl-C`，再检查：

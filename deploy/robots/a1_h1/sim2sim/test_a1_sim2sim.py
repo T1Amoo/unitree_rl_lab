@@ -66,8 +66,8 @@ def test_mit_pd_torque_is_clipped_to_motor_limits():
     data.qfrc_applied[:] = 0.0
     tau = io.apply_mit_pd()
     assert np.all(np.abs(tau) <= EFFORT + 1e-6)
-    assert np.isclose(np.max(np.abs(tau[:4])), 28.0)
-    assert np.isclose(np.max(np.abs(tau[4:])), 8.0)
+    assert np.isclose(np.max(np.abs(tau[:3])), 28.0)
+    assert np.isclose(np.max(np.abs(tau[3:])), 8.0)
 
 
 def test_bridge_qdes_delta_limit_matches_deploy_envelope():

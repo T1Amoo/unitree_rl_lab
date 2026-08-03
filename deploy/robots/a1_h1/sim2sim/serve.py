@@ -8,12 +8,13 @@ import numpy as np
 SERVE_LAUNCH = np.array([1.35, 0.0, 1.03], dtype=np.float64)
 G = 9.81
 Z_BOUNCE = 0.78
-# Match Pingpong_TTRL a1_tt_v11 easy serve. The policy was trained with the
-# first bounce deep on the robot half, not close to the table center.
-BOUNCE_X = (-1.24, -0.96)
-BOUNCE_VZ = (1.60, 2.10)
-SERVE_Y_CENTER = 0.05
-SERVE_Y_HALF = 0.04
+# Final backhand-v1 hard-stage distribution (the last 10k consolidation stage).
+# The next training version will additionally reject samples whose ball center
+# does not clear the net; keep this sampler faithful to the already-trained v1.
+BOUNCE_X = (-1.10, -0.35)
+BOUNCE_VZ = (0.50, 2.00)
+SERVE_Y_CENTER = 0.055
+SERVE_Y_HALF = 0.105
 
 
 class Serve:

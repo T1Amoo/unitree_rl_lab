@@ -34,9 +34,9 @@ constexpr double kSoftJointLimitFactor = 0.95;
 constexpr int kFrameSize = 39;
 constexpr int kHistory = 5;
 constexpr int kObsSize = kFrameSize * kHistory;
-constexpr double kHitPlaneX = -1.60;
-constexpr double kHomeY = 0.76;
-constexpr double kPaddleYOffset = -0.66;
+constexpr double kHitPlaneX = -1.243;
+constexpr double kHomeY = 0.0;
+constexpr double kPaddleYOffset = -0.03;
 constexpr double kHitBodyHeight = 0.028;
 constexpr double kGravity = 9.81;
 constexpr double kZBounce = 0.78;
@@ -60,12 +60,12 @@ const std::array<std::array<const char*, 3>, 7> kRightJointAliases = {{
 }};
 
 const std::array<double, 7> kDefaultRightQ = {
-    0.569, -0.692, 0.717, 1.13, -1.24, 0.0314, 0.772};
+    1.450, -0.762, -2.050, 1.445, 0.206, -0.827, 1.043};
 const std::array<double, 7> kRightQMin = {
     -1.05, -3.14, -2.76, -1.92, -2.76, -1.57, -2.76};
 const std::array<double, 7> kRightQMax = {
     3.14, 0.262, 2.76, 1.92, 2.76, 1.57, 2.76};
-const std::array<float, 3> kRobotTablePos = {-1.8f, 0.76f, 0.0282f};
+const std::array<float, 3> kRobotTablePos = {-1.8f, 0.0f, 0.0282f};
 const std::array<float, 3> kPredSentinel = {
     static_cast<float>(kHitPlaneX),
     static_cast<float>(kHomeY + kPaddleYOffset),
@@ -105,7 +105,7 @@ fs::path findLgyRoot() {
 
 std::string defaultPolicyPath() {
     return (findLgyRoot() /
-            "Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx")
+            "Pingpong_TTRL/logs/a1_tt_backhand_real_v1_y055h105/2026-08-01_11-05-58_scratch_backhand_camera_age35_tau_delay_dr_servey055h105_10k10k10k/exported/policy.onnx")
         .string();
 }
 
@@ -443,7 +443,7 @@ public:
         std::copy(default_q.begin(), default_q.end(), default_right_q_.begin());
 
         auto robot_table_pos = declare_parameter<std::vector<double>>(
-            "robot_table_pos", {-1.8, 0.76, 0.0282});
+            "robot_table_pos", {-1.8, 0.0, 0.0282});
         if (robot_table_pos.size() != 3) {
             throw std::runtime_error("robot_table_pos must contain 3 values");
         }
@@ -467,9 +467,9 @@ public:
         }
 
         auto hit_target_y = declare_parameter<std::vector<double>>(
-            "hit_target_y_range", {0.0, 0.55});
+            "hit_target_y_range", {-0.06, 0.20});
         auto hit_target_z = declare_parameter<std::vector<double>>(
-            "hit_target_z_range", {0.90, 1.25});
+            "hit_target_z_range", {0.84, 1.14});
         if (hit_target_y.size() != 2 || hit_target_z.size() != 2) {
             throw std::runtime_error("hit target ranges must contain 2 values each");
         }
@@ -478,7 +478,7 @@ public:
         }
         std::copy(hit_target_y.begin(), hit_target_y.end(), hit_target_y_range_.begin());
         std::copy(hit_target_z.begin(), hit_target_z.end(), hit_target_z_range_.begin());
-        zero_action_when_ball_invalid_ = declare_parameter<bool>("zero_action_when_ball_invalid", false);
+        zero_action_when_ball_invalid_ = declare_parameter<bool>("zero_action_when_ball_invalid", true);
 
         const std::vector<double> default_max_delta_per_tick{
             0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160};
@@ -512,9 +512,9 @@ public:
 
         BallGateConfig gate_cfg;
         gate_cfg.confirm_frames = declare_parameter<int>("gate_confirm_frames", 1);
-        gate_cfg.coast_frames = declare_parameter<int>("gate_coast_frames", 1);
-        gate_cfg.vx_away = declare_parameter<double>("gate_min_approach_vx", -0.05);
-        gate_cfg.y_abs = declare_parameter<double>("gate_y_abs", 1.2);
+        gate_cfg.coast_frames = declare_parameter<int>("gate_coast_frames", 5);
+        gate_cfg.vx_away = declare_parameter<double>("gate_min_approach_vx", -0.50);
+        gate_cfg.y_abs = declare_parameter<double>("gate_y_abs", 0.35);
         gate_cfg.hit_plane_x = hit_plane_x_;
         gate_ = std::make_unique<BallValidityGate>(gate_cfg);
 
@@ -1207,9 +1207,9 @@ private:
     double home_y_ = kHomeY;
     double paddle_y_offset_ = kPaddleYOffset;
     std::array<float, 3> pred_sentinel_ = kPredSentinel;
-    std::array<double, 2> hit_target_y_range_{0.0, 0.55};
-    std::array<double, 2> hit_target_z_range_{0.90, 1.25};
-    bool zero_action_when_ball_invalid_ = false;
+    std::array<double, 2> hit_target_y_range_{-0.06, 0.20};
+    std::array<double, 2> hit_target_z_range_{0.84, 1.14};
+    bool zero_action_when_ball_invalid_ = true;
 
     std::unique_ptr<OrtRunner> policy_;
     std::unique_ptr<OrtRunner> predictor_;

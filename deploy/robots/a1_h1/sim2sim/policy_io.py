@@ -22,7 +22,7 @@ def guess_lgy_root() -> Path:
 LGY_ROOT = guess_lgy_root()
 DEFAULT_POLICY = (
     LGY_ROOT
-    / "Pingpong_TTRL/logs/a1_tt_real_v7/2026-07-24_14-18-11_resume10000_range10k_hold20k/exported/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_backhand_real_v1_y055h105/2026-08-01_11-05-58_scratch_backhand_camera_age35_tau_delay_dr_servey055h105_10k10k10k/exported/policy.onnx"
 )
 DEFAULT_PREDICTOR = DEFAULT_POLICY.with_name("predictor.onnx")
 
@@ -42,12 +42,12 @@ OBS_SIZE = FRAME_SIZE * HISTORY
 
 KP = np.array([300.0, 300.0, 300.0, 120.0, 120.0, 120.0, 120.0], dtype=np.float64)
 KD = np.array([3.5, 3.5, 3.5, 1.0, 1.0, 1.0, 1.0], dtype=np.float64)
-EFFORT = np.array([28.0, 28.0, 28.0, 28.0, 8.0, 8.0, 8.0], dtype=np.float64)
+EFFORT = np.array([28.0, 28.0, 28.0, 8.0, 8.0, 8.0, 8.0], dtype=np.float64)
 VEL_LIMIT = np.array([10.0, 10.0, 10.0, 30.0, 30.0, 30.0, 30.0], dtype=np.float64)
 # h1_pingpong/src/armcontrol/src/inference_arm_control_node.cpp initializes the
 # A1 right arm as r1-r3 DM4340_48V and r4-r7 DM4310_48V. These are DAMIAO
 # command/feedback ranges, not a calibrated motor dynamics model.
-DAMIAO_EFFORT = np.array([28.0, 28.0, 28.0, 28.0, 8.0, 8.0, 8.0], dtype=np.float64)
+DAMIAO_EFFORT = np.array([28.0, 28.0, 28.0, 8.0, 8.0, 8.0, 8.0], dtype=np.float64)
 DAMIAO_DQ_LIMIT = np.array([10.0, 10.0, 10.0, 30.0, 30.0, 30.0, 30.0], dtype=np.float64)
 # Actual Isaac play velocity envelope measured under model_800 with the 28/8Nm
 # effort limits. This is a deploy-visual servo cap, not a motor specification.
@@ -55,75 +55,27 @@ ISAAC_PLAY_SERVO_VEL = np.array([1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0], dtype=np.fl
 BRIDGE_MAX_DELTA_PER_TICK = np.array([0.020, 0.024, 0.036, 0.032, 0.080, 0.064, 0.160], dtype=np.float64)
 REAL_RESPONSE_MAX_DELTA_PER_TICK = np.array([0.05, 0.05, 0.05, 0.10, 0.10, 0.10, 0.10], dtype=np.float64)
 REAL_RESPONSE_U_MEAN = np.array(
-    [
-        -0.505,
-        -1.13,
-        1.13,
-        1.02,
-        -0.7,
-        0.0,
-        -1.3,
-    ],
+    [1.450, -0.762, -2.050, 1.445, 0.206, -0.827, 1.043],
     dtype=np.float64,
 )
 REAL_RESPONSE_FN_HZ = np.array(
-    [
-        15.835,
-        2.806,
-        18.0,
-        3.648,
-        30.0,
-        30.0,
-        30.0,
-    ],
+    [3.166, 9.959, 9.899, 5.892, 20.000, 8.572, 19.455],
     dtype=np.float64,
 )
 REAL_RESPONSE_ZETA = np.array(
-    [
-        0.271,
-        0.555,
-        0.752,
-        0.721,
-        0.331,
-        1.058,
-        0.782,
-    ],
+    [0.414, 0.559, 0.728, 0.325, 0.889, 0.615, 0.565],
     dtype=np.float64,
 )
 REAL_RESPONSE_DELAY_S = np.array(
-    [
-        0.0362,
-        0.0,
-        0.0441,
-        0.0,
-        0.0443,
-        0.0381,
-        0.0376,
-    ],
+    [0.010, 0.040, 0.040, 0.030, 0.040, 0.030, 0.040],
     dtype=np.float64,
 )
 REAL_RESPONSE_GAIN = np.array(
-    [
-        0.9832,
-        0.9796,
-        0.9275,
-        1.0885,
-        0.9649,
-        1.0135,
-        1.0027,
-    ],
+    [0.9965, 1.0006, 1.0060, 0.9771, 1.0060, 1.0045, 0.9948],
     dtype=np.float64,
 )
 REAL_RESPONSE_BIAS_RAD = np.array(
-    [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-    ],
+    [-0.0208, 0.0004, -0.0095, -0.0084, -0.0050, 0.0041, 0.0003],
     dtype=np.float64,
 )
 DEFAULT_RIGHT_Q = np.array([DEFAULT_QPOS[j] for j in RIGHT_ARM_JOINTS], dtype=np.float64)
@@ -138,10 +90,10 @@ DAMIAO_MIT_EFFORT = np.array([28.0, 28.0, 28.0, 8.0, 8.0, 8.0, 8.0], dtype=np.fl
 DAMIAO_MIT_VEL = np.array([8.0, 8.0, 8.0, 20.0, 20.0, 20.0, 20.0], dtype=np.float64)
 DAMIAO_MIT_BRAKE_EFFORT = DAMIAO_MIT_EFFORT.copy()
 
-# Keep the predictor/marker intercept plane aligned with A1 TT v12+ training.
-HIT_PLANE_X = -1.62
-HOME_Y = 0.76
-PADDLE_Y_OFFSET = -0.72
+# Keep predictor/marker and invalid-ball observations aligned with backhand-v1.
+HIT_PLANE_X = -1.243
+HOME_Y = 0.0
+PADDLE_Y_OFFSET = -0.03
 HIT_BODY_HEIGHT = 0.028
 PRED_SENTINEL = np.array([HIT_PLANE_X, HOME_Y + PADDLE_Y_OFFSET, HIT_BODY_HEIGHT + 0.2], dtype=np.float32)
 
@@ -541,15 +493,14 @@ class A1PolicyIO:
         if paddle_bid >= 0:
             return (
                 self.data.xpos[paddle_bid].copy()
-                + self.data.xmat[paddle_bid].reshape(3, 3) @ np.array([0.0, 0.0, 0.085])
+                + self.data.xmat[paddle_bid].reshape(3, 3) @ np.zeros(3, dtype=np.float64)
             )
-        # MuJoCo collapses the fixed r_paddle joint into Link_r7 when compiling the
-        # URDF. The fixed joint is xyz=(0,0,0.172), rpy=(pi,0,0); training's local
-        # paddle offset (0,0,0.085) therefore becomes parent-local (0,0,-0.085).
+        # MuJoCo may collapse the fixed r_paddle joint into Link_r7.  Backhand-v1
+        # uses the paddle body origin itself, so retain only the fixed-joint offset.
         wrist_bid = body_id(self.model, "Link_r7")
         return (
             self.data.xpos[wrist_bid].copy()
-            + self.data.xmat[wrist_bid].reshape(3, 3) @ np.array([0.0, 0.0, 0.087])
+            + self.data.xmat[wrist_bid].reshape(3, 3) @ np.array([0.0, 0.0, 0.172])
         )
 
     def _soft_joint_ranges(self) -> tuple[np.ndarray, np.ndarray]:

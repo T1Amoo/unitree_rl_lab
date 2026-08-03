@@ -1,17 +1,20 @@
-# A1 TT Backhand Base
+# A1 TT Backhand（当前默认）
 
-This directory isolates the mentor-provided `model_9700` backhand deployment
-stack from the existing forehand sim2sim path.
+本目录是 A1 当前默认反手入口。无参数运行使用 2026-08-03 导出的
+`a1_tt_backhand_real_v1_y055h105/model_29999.pt` 最终策略；旧正手不再作为
+训练、play、sim2sim 或部署默认项。
 
 The default launcher selects the exact required profile and control path:
 
-- profile: `v1_3_backhand_low_arm_hitplane020`
-- actuator: `damiao_mit`
-- fitted real-response model: enabled
-- serve pause: 100 control steps (about 2 seconds)
-- policy: `Pingpong_TTRL/pretrained/a1_tt_backhand/base_9700_hitplane020/policy/policy.onnx`
+- base/table: `[-1.8, 0.0, 0.0282]`
+- ready: `[1.450,-0.762,-2.050,1.445,0.206,-0.827,1.043]`
+- hit plane: `x=-1.243`
+- target: `y=[-0.06,0.20]`, `z=[0.84,1.14]`
+- actuator: `action low-pass + fitted second-order direct_response`
+- policy: `Pingpong_TTRL/logs/a1_tt_backhand_real_v1_y055h105/2026-08-01_11-05-58_scratch_backhand_camera_age35_tau_delay_dr_servey055h105_10k10k10k/exported/policy.onnx`
 
-The frozen coordinate, joint, hit-plane, timing, and direct-SDK actuator contract is in
+The mentor `model_9700` baseline remains frozen and is not overwritten. Its coordinate,
+joint, hit-plane, timing, and direct-SDK actuator contract is in
 `Pingpong_TTRL/pretrained/a1_tt_backhand/base_9700_hitplane020/DEPLOY_CONTRACT.md`.
 It also records the checks required before this baseline is connected to the
 real arm with zero desired velocity and zero feedforward torque.
@@ -22,14 +25,14 @@ Run the viewer:
 deploy/robots/a1_h1/a1_tt_backhand/run_sim2sim.sh
 ```
 
-After building `sim2real_bridge_cpp`, run the real camera pipeline with:
+After building `sim2real_bridge_cpp`, run the current camera pipeline with:
 
 ```bash
-ros2 launch sim2real_bridge_cpp a1_tt_backhand_9700_camera.launch.py
+ros2 launch sim2real_bridge_cpp a1_policy_bridge_cpp.launch.py
 ```
 
 The real launch starts in `PASSIVE`, consumes `/pingpong_location`, uses the
-base-9700 table frame without the legacy `y+0.76` offset, and uses the training
+backhand-v1 table frame without the legacy `y+0.76` offset, and uses the training
 first-order action-target low-pass at 50 Hz. Its per-joint `servo_tau_s` is
 `[0.10, 0.10, 0.08, 0.10, 0.05, 0.05, 0.10]` seconds and its matching velocity
 cap is `[1.0, 1.2, 1.8, 1.6, 4.0, 3.2, 8.0]` rad/s. The hard q-des slew branch
@@ -48,7 +51,7 @@ the actor still sees the no-ball sentinel until the safety gate opens. The gate
 opens on the first live tick and coasts through at most four bad ticks
 (`confirm=1`, `coast=5`). It also limits the camera-space table corridor to
 `|y| <= 0.35 m` and requires `vx <= -0.50 m/s`; the policy's trained hit target
-is only `y=[-0.025, 0.107]`, so this rejects the observed static false stereo
+is `y=[-0.06, 0.20]`, so this rejects the observed static false stereo
 cluster around `y=-0.5` without narrowing the actor target. These settings
 address measurement jitter; they do not change the policy's table frame or
 action contract.

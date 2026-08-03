@@ -455,7 +455,11 @@ def run(args: argparse.Namespace) -> dict:
         if gate_out.engaged:
             stats["valid_frames"] += 1
         obs = io.observe(ball_pos, ball_vel, valid_ball=gate_out.engaged)
-        action = np.zeros(7, dtype=np.float32) if policy is None else policy(obs)
+        action = (
+            np.zeros(7, dtype=np.float32)
+            if policy is None or (not gate_out.engaged and args.invalid_ball_action == "zero")
+            else policy(obs)
+        )
         prev_q_des = io.q_des.copy()
         apply_qdes_limit = args.bridge_qdes_limit or args.real_response_model
         max_delta = max_delta_per_tick if apply_qdes_limit else None
@@ -740,6 +744,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--servo-tau", type=float, default=0.25, help="First-order visual servo time constant in seconds.")
     ap.add_argument("--fast-servo", action="store_true", help="Use the training hard velocity limits for the visual servo.")
     ap.add_argument("--bridge-qdes-limit", action="store_true", help="Apply the sim2real bridge max_delta_per_tick limit to policy q_des.")
+    ap.add_argument(
+        "--invalid-ball-action",
+        choices=["zero", "policy"],
+        default="zero",
+        help="Use zero/ready action while the ball gate is invalid (default, matches deployment).",
+    )
     ap.add_argument(
         "--action-lowpass",
         action=argparse.BooleanOptionalAction,

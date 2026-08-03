@@ -29,7 +29,9 @@ DEFAULT_URDF = A1_ASSET_ROOT / "urdf/X1_URDF_V1_3.urdf"
 DEFAULT_MESHDIR = A1_ASSET_ROOT / "meshes"
 DEFAULT_SCENE_XML = Path(__file__).resolve().parent / "scene/a1_tt_scene.xml"
 
-ROBOT_TABLE_POS = np.array([-2.0, 0.76, 0.0282], dtype=np.float64)
+# Current default is the backhand-v1 training frame.  Historical forehand
+# geometry remains available only through its explicitly versioned artifacts.
+ROBOT_TABLE_POS = np.array([-1.8, 0.0, 0.0282], dtype=np.float64)
 BALL_RADIUS = 0.02
 TABLE_HEIGHT = 0.76
 PHYSICS_DT = 0.002
@@ -46,10 +48,10 @@ RIGHT_ARM_EFFORT_LIMITS = {
     "r1": 28.0,
     "r2": 28.0,
     "r3": 28.0,
-    "r4": 10.0,
-    "r5": 10.0,
-    "r6": 10.0,
-    "r7": 10.0,
+    "r4": 8.0,
+    "r5": 8.0,
+    "r6": 8.0,
+    "r7": 8.0,
 }
 RIGHT_ARM_ARMATURE = {
     "r1": 0.032,
@@ -67,16 +69,15 @@ RIGHT_ARM_DAMPING = 0.02
 RIGHT_ARM_FRICTIONLOSS = 0.0
 
 DEFAULT_QPOS = {
-    # v13 training matches the measured real r1 centerline height of 1.15 m.
-    # X1_URDF_V1_1 gives sj ~= 1.15 - (0.0282 + 1.2107 + 0.025) = -0.1139.
-    "sj": -0.1139,
-    "r1": -0.505,
-    "r2": -1.13,
-    "r3": 1.13,
-    "r4": 1.02,
-    "r5": -0.7,
-    "r6": 0.0,
-    "r7": -1.3,
+    # Backhand-v1 ready pose and V1_3 fixed lift geometry.
+    "sj": 0.0,
+    "r1": 1.450,
+    "r2": -0.762,
+    "r3": -2.050,
+    "r4": 1.445,
+    "r5": 0.206,
+    "r6": -0.827,
+    "r7": 1.043,
     "l1": 0.0,
     "l2": 0.0,
     "l3": 0.0,

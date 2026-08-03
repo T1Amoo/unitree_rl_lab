@@ -24,7 +24,7 @@ constexpr size_t kNumJoints = 7;
 constexpr double kPi = 3.14159265358979323846;
 
 const std::array<double, kNumJoints> kDefaultRightQ = {
-    0.569, -0.692, 0.717, 1.13, -1.24, 0.0314, 0.772};
+    1.450, -0.762, -2.050, 1.445, 0.206, -0.827, 1.043};
 const std::array<double, kNumJoints> kRightQMin = {
     -1.05, -3.14, -2.76, -1.92, -2.76, -1.57, -2.76};
 const std::array<double, kNumJoints> kRightQMax = {
