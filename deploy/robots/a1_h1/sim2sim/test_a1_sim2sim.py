@@ -188,6 +188,7 @@ def test_invalid_ball_observation_uses_home_sentinel():
 
 def test_short_headless_rollout_without_policy():
     args = parse_args([])
+    assert args.serve_profile == "generalized"
     args.headless_steps = 5
     args.no_policy = True
     stats = run(args)

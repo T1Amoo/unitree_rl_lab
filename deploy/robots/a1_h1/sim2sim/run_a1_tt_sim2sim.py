@@ -732,8 +732,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument(
         "--serve-profile",
         choices=["trained_v1", "generalized"],
-        default="trained_v1",
-        help="Use the trained-v1 serve distribution or the net-clearing high/slow generalization probe.",
+        default="generalized",
+        help="Serve range (default: fixed net-clearing generalized range; trained_v1 is historical only).",
     )
     ap.add_argument("--no-serve", action="store_true", help="Keep the ball parked and never start serves.")
     ap.add_argument(

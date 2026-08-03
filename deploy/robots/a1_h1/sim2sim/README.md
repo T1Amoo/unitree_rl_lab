@@ -48,12 +48,15 @@ Viewer:
 conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py
 ```
 
-High/slow generalization probe (all samples clear the net and first-bounce on
-the robot side; this is intentionally wider than the frozen v1 training set):
+The default is the fixed generalized range: all samples clear the net and
+first-bounce on the robot side, with wider depth/y/height/speed coverage than
+the frozen v1 training set:
 
 ```bash
-conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py --serve-profile generalized
+conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py
 ```
+
+Use `--serve-profile trained_v1` only for historical narrow-range replay.
 
 Explicit torque diagnostic:
 
