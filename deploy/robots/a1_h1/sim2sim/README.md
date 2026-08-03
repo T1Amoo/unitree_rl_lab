@@ -24,13 +24,13 @@ is still estimated and logged:
 tau = kp * (q_des - q) + kd * (dq_des - dq) + tau_ff
 ```
 
-Use `--dynamic-pd` to test the explicit MIT-PD torque path. The runner now
-loads a generated MJCF scene (`sim2sim/scene/a1_tt_scene.xml`) instead of using
-the raw URDF directly. The MJCF keeps the URDF geometry/inertias, and adds
-MuJoCo-only metadata that URDF did not carry: joint armature, damping,
-frictionloss, DAMIAO actuator force ranges, motor actuators, sensors, and
-table-tennis contact pairs. Those values are still initial estimates until
-hardware logs are used to calibrate them.
+Use `--dynamic-pd` to test the explicit MIT-PD torque path. The runner generates
+a temporary MJCF from the current URDF on every start, so fixed-joint calibration
+changes cannot be hidden by a stale checked-in XML. The builder keeps the URDF
+geometry/inertias and adds MuJoCo-only metadata that URDF did not carry: joint
+armature, damping, frictionloss, DAMIAO actuator force ranges, motor actuators,
+sensors, and table-tennis contact pairs. Those values are still initial estimates
+until hardware logs are used to calibrate them.
 
 ## Run
 
@@ -46,6 +46,13 @@ Viewer:
 
 ```bash
 conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py
+```
+
+High/slow generalization probe (all samples clear the net and first-bounce on
+the robot side; this is intentionally wider than the frozen v1 training set):
+
+```bash
+conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py --serve-profile generalized
 ```
 
 Explicit torque diagnostic:
@@ -68,7 +75,7 @@ conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py --headless-steps 5
 
 ## Defaults
 
-- Scene MJCF: `sim2sim/scene/a1_tt_scene.xml`
+- Scene MJCF: generated from the current URDF at `/tmp/a1_h1_tt_scene.xml` on every run
 - Source URDF: `/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/legged_lab/assets/a1/X1_URDF_V1_3/urdf/X1_URDF_V1_3.urdf`
 - Policy ONNX: `/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/logs/a1_tt_backhand_real_v1_y055h105/2026-08-01_11-05-58_scratch_backhand_camera_age35_tau_delay_dr_servey055h105_10k10k10k/exported/policy.onnx`
 - Control: 50 Hz policy, 500 Hz MuJoCo physics

@@ -25,6 +25,13 @@ Run the viewer:
 deploy/robots/a1_h1/a1_tt_backhand/run_sim2sim.sh
 ```
 
+To probe the frozen v1 policy outside its training distribution with net-clearing
+high/slow balls:
+
+```bash
+deploy/robots/a1_h1/a1_tt_backhand/run_sim2sim.sh --serve-profile generalized
+```
+
 After building `sim2real_bridge_cpp`, run the current camera pipeline with:
 
 ```bash

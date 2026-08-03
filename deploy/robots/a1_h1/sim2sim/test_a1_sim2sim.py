@@ -20,7 +20,16 @@ from policy_io import (
     REAL_RESPONSE_MAX_DELTA_PER_TICK,
 )
 from run_a1_tt_sim2sim import parse_args, run
-from serve import BOUNCE_X, BOUNCE_VZ, SERVE_Y_CENTER, SERVE_Y_HALF, Serve
+from serve import (
+    BOUNCE_X,
+    BOUNCE_VZ,
+    GENERALIZED_BOUNCE_X,
+    NET_CENTER_CLEARANCE_Z,
+    SERVE_Y_CENTER,
+    SERVE_Y_HALF,
+    Serve,
+    first_flight_metrics,
+)
 
 
 def test_scene_loads_with_robot_table_and_ball():
@@ -106,6 +115,17 @@ def test_serve_bounce_sampler_ranges():
         y_b = vel[1] * t_b
         assert BOUNCE_X[0] <= x_b <= BOUNCE_X[1]
         assert SERVE_Y_CENTER - SERVE_Y_HALF <= y_b <= SERVE_Y_CENTER + SERVE_Y_HALF
+
+
+def test_generalized_serve_clears_net_and_bounces_on_robot_side():
+    serve = Serve(rng=np.random.default_rng(7), profile="generalized")
+    for _ in range(256):
+        _, vel = serve.sample()
+        metrics = first_flight_metrics(vel)
+        assert metrics is not None
+        net_z, bounce_x, _ = metrics
+        assert net_z >= NET_CENTER_CLEARANCE_Z
+        assert GENERALIZED_BOUNCE_X[0] <= bounce_x <= GENERALIZED_BOUNCE_X[1]
 
 
 def test_ball_gate_accepts_valid_serve_and_rejects_invalid_ball():

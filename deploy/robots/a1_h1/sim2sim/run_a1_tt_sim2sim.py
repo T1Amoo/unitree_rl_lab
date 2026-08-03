@@ -221,7 +221,10 @@ def _dead_ball(ball_pos: np.ndarray, ball_vel: np.ndarray) -> bool:
 def run(args: argparse.Namespace) -> dict:
     if args.dynamic_pd and args.actuator_mode == "isaac_approx":
         args.actuator_mode = "torque_chain"
-    model, data, xml_path = load_scene()
+    # Build a temporary MJCF from the current URDF on every run.  Loading the
+    # checked-in generated XML can silently preserve stale fixed-joint geometry
+    # after a URDF calibration update (notably the r1 centerline height).
+    model, data, xml_path = load_scene(None)
     predictor_path = Path(args.policy).with_name("predictor.onnx")
     io = A1PolicyIO(model, data, predictor_path=predictor_path)
     initial_state_time_s = float("nan")
@@ -258,7 +261,7 @@ def run(args: argparse.Namespace) -> dict:
         print(f"[a1_sim2sim] predictor: none ({predictor_path} not found)")
     policy = None if args.no_policy else OnnxPolicy(args.policy)
     rng = np.random.default_rng(args.seed) if args.seed is not None else None
-    serve = Serve(rng=rng, interval_steps=args.serve_interval)
+    serve = Serve(rng=rng, interval_steps=args.serve_interval, profile=args.serve_profile)
     trajectory = BallTrajectoryReplay(args.ball_trajectory_csv) if args.ball_trajectory_csv is not None else None
     trajectory_interval = (
         max(float(args.trajectory_loop_interval), trajectory.duration)
@@ -720,6 +723,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
     ap.add_argument("--headless-steps", type=int, default=0, help="Run N 50Hz control steps without viewer.")
     ap.add_argument("--serve-interval", type=int, default=250, help="Serve period in 50Hz control steps.")
+    ap.add_argument(
+        "--serve-profile",
+        choices=["trained_v1", "generalized"],
+        default="trained_v1",
+        help="Use the trained-v1 serve distribution or the net-clearing high/slow generalization probe.",
+    )
     ap.add_argument("--no-serve", action="store_true", help="Keep the ball parked and never start serves.")
     ap.add_argument(
         "--static-ball",
