@@ -9,9 +9,9 @@ SERVE_LAUNCH = np.array([1.35, 0.0, 1.03], dtype=np.float64)
 G = 9.81
 Z_BOUNCE = 0.78
 NET_CENTER_CLEARANCE_Z = 0.95
-GENERALIZED_BOUNCE_X = (-1.30, -0.05)
+GENERALIZED_BOUNCE_X = (-1.33, -0.03)
 GENERALIZED_SERVE_Y_CENTER = 0.055
-GENERALIZED_SERVE_Y_HALF = 0.135
+GENERALIZED_SERVE_Y_HALF = 0.200
 # Match the explicit aerodynamic force used by run_a1_tt_sim2sim.py.
 BALL_DRAG_ACCEL_K = 0.5 * 1.225 * (np.pi * 0.02**2) * 0.4378 / 0.0034
 FLIGHT_DT = 0.002
@@ -28,9 +28,9 @@ SERVE_Y_HALF = 0.105
 # first bounce on the robot side.  The three equally likely bands deliberately
 # span fast/low, medium and slow/high arrivals.
 GENERALIZED_VELOCITY_BANDS = (
-    ((-5.50, -4.00), (0.50, 2.20)),
-    ((-4.20, -3.00), (1.20, 3.00)),
-    ((-3.00, -2.00), (2.30, 4.00)),
+    ((-6.00, -4.00), (0.40, 2.40)),
+    ((-4.50, -2.70), (1.00, 3.30)),
+    ((-3.00, -1.60), (2.10, 4.30)),
 )
 
 

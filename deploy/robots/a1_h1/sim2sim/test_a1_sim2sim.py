@@ -5,7 +5,17 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from a1_scene import PHYSICS_DT, RIGHT_ARM_EFFORT_LIMITS, RIGHT_ARM_JOINTS, ball_addresses, build_scene_xml, load_scene
+from a1_scene import (
+    CONTACT_MARGIN,
+    PADDLE_BALL_SOLREF,
+    PHYSICS_DT,
+    RIGHT_ARM_EFFORT_LIMITS,
+    RIGHT_ARM_JOINTS,
+    TABLE_BALL_SOLREF,
+    ball_addresses,
+    build_scene_xml,
+    load_scene,
+)
 from ball_gate import BallValidityGate
 from policy_io import PRED_SENTINEL
 from policy_io import (
@@ -56,6 +66,32 @@ def test_generated_mjcf_has_motor_metadata():
         assert np.allclose(model.jnt_actfrcrange[jid], [-effort, effort])
         assert model.dof_armature[dof] > 0.0
         assert model.dof_damping[dof] > 0.0
+
+
+def test_contact_pairs_match_training_material_contract():
+    model, _, _ = load_scene(None)
+    ball = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "ball_geom")
+    expected = {
+        "table_top": TABLE_BALL_SOLREF,
+        "table_support": TABLE_BALL_SOLREF,
+        "net": TABLE_BALL_SOLREF,
+        "paddle_blade": PADDLE_BALL_SOLREF,
+    }
+    found = {}
+    for pair_id in range(model.npair):
+        geom1 = int(model.pair_geom1[pair_id])
+        geom2 = int(model.pair_geom2[pair_id])
+        if ball not in (geom1, geom2):
+            continue
+        other = geom2 if geom1 == ball else geom1
+        other_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, other)
+        if other_name not in expected:
+            continue
+        np.testing.assert_allclose(model.pair_solref[pair_id], expected[other_name])
+        np.testing.assert_allclose(model.pair_friction[pair_id], [0.1, 0.1, 0.005, 0.0001, 0.0001])
+        assert np.isclose(model.pair_margin[pair_id], CONTACT_MARGIN)
+        found[other_name] = True
+    assert set(found) == set(expected)
 
 
 def test_policy_obs_and_action_shape():

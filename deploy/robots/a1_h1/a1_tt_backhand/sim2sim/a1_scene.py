@@ -29,6 +29,13 @@ PINGPONG_TTRL = LGY_ROOT / "Pingpong_TTRL"
 BALL_RADIUS = 0.02
 TABLE_HEIGHT = 0.76
 PHYSICS_DT = 0.002
+BALL_MATERIAL_FRICTION = 0.10
+TABLE_MATERIAL_FRICTION = 0.40
+PADDLE_MATERIAL_FRICTION = 0.50
+CONTACT_FRICTION = "0.1 0.1 0.005 0.0001 0.0001"
+CONTACT_SOLIMP = "0.95 0.99 0.001"
+TABLE_BALL_SOLREF = (-141000.0, -10.0)  # empirical e=0.95 at dt=2 ms
+PADDLE_BALL_SOLREF = (-90000.0, -54.0)  # empirical e=0.75 at dt=2 ms
 
 
 RIGHT_ARM_JOINTS = [f"r{i}" for i in range(1, 8)]
@@ -502,7 +509,7 @@ def _decorate_paddle_contact(root: ET.Element) -> None:
         geom.set("name", "paddle_blade")
         geom.set("contype", "1")
         geom.set("conaffinity", "1")
-        geom.set("friction", "0.6 0.005 0.0001")
+        geom.set("friction", f"{_fmt(PADDLE_MATERIAL_FRICTION)} 0.005 0.0001")
         geom.set("solref", "0.002 1")
         geom.set("solimp", "0.95 0.99 0.001")
         return
@@ -571,7 +578,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "0.1 0.3 0.6 1",
             "contype": "1",
             "conaffinity": "1",
-            "friction": "0.1 0.005 0.0001",
+            "friction": f"{_fmt(TABLE_MATERIAL_FRICTION)} 0.005 0.0001",
             "solref": "0.002 1",
             "solimp": "0.95 0.99 0.001",
         },
@@ -587,6 +594,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "0.18 0.18 0.18 1",
             "contype": "1",
             "conaffinity": "1",
+            "friction": f"{_fmt(TABLE_MATERIAL_FRICTION)} 0.005 0.0001",
         },
     )
     ET.SubElement(
@@ -600,6 +608,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "0.9 0.9 0.9 0.5",
             "contype": "1",
             "conaffinity": "1",
+            "friction": f"{_fmt(TABLE_MATERIAL_FRICTION)} 0.005 0.0001",
         },
     )
     ball = ET.SubElement(worldbody, "body", {"name": "ball", "pos": "1.35 0 1.03"})
@@ -615,7 +624,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "1 0.12 0.05 1",
             "contype": "1",
             "conaffinity": "1",
-            "friction": "0.1 0.005 0.0001",
+            "friction": f"{_fmt(BALL_MATERIAL_FRICTION)} 0.005 0.0001",
             "solref": "0.002 1",
             "solimp": "0.95 0.99 0.001",
         },
@@ -643,26 +652,31 @@ def _add_actuators(root: ET.Element) -> None:
 def _add_contact_pairs(root: ET.Element) -> None:
     _remove_children(root, "contact")
     contact = ET.Element("contact")
-    ET.SubElement(
-        contact,
-        "pair",
-        {
-            "geom1": "ball_geom",
-            "geom2": "table_top",
-            "solref": "-490000 -2",
-            "solimp": "0.95 0.99 0.001",
-            "margin": _fmt(ACTIVE_PROFILE.ball_contact_margin),
-        },
-    )
+    table_solref = f"{_fmt(TABLE_BALL_SOLREF[0])} {_fmt(TABLE_BALL_SOLREF[1])}"
+    paddle_solref = f"{_fmt(PADDLE_BALL_SOLREF[0])} {_fmt(PADDLE_BALL_SOLREF[1])}"
+    for table_geom in ("table_top", "table_support", "net"):
+        ET.SubElement(
+            contact,
+            "pair",
+            {
+                "geom1": "ball_geom",
+                "geom2": table_geom,
+                "solref": table_solref,
+                "solimp": CONTACT_SOLIMP,
+                "margin": _fmt(ACTIVE_PROFILE.ball_contact_margin),
+                "friction": CONTACT_FRICTION,
+            },
+        )
     ET.SubElement(
         contact,
         "pair",
         {
             "geom1": "ball_geom",
             "geom2": "paddle_blade",
-            "solref": "-200000 -5",
-            "solimp": "0.95 0.99 0.001",
+            "solref": paddle_solref,
+            "solimp": CONTACT_SOLIMP,
             "margin": _fmt(ACTIVE_PROFILE.ball_contact_margin),
+            "friction": CONTACT_FRICTION,
         },
     )
     _insert_after(root, "actuator", contact)

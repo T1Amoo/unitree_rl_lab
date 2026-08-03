@@ -32,9 +32,27 @@ DEFAULT_SCENE_XML = Path(__file__).resolve().parent / "scene/a1_tt_scene.xml"
 # Current default is the backhand-v1 training frame.  Historical forehand
 # geometry remains available only through its explicitly versioned artifacts.
 ROBOT_TABLE_POS = np.array([-1.8, 0.0, 0.0282], dtype=np.float64)
+# Temporary MuJoCo-only compatibility offset for policies trained before the
+# 2026-08-03 r1 centerline correction (1.2642 m -> 1.1500 m).  The training
+# URDF remains untouched; callers must opt in explicitly.
+LEGACY_SJ_HEIGHT_OFFSET_M = 0.1142
 BALL_RADIUS = 0.02
 TABLE_HEIGHT = 0.76
 PHYSICS_DT = 0.002
+
+# Isaac/PhysX material contract (combine=min): ball=0.95, table=0.95,
+# paddle=0.75; ball friction=0.10 therefore both effective contact frictions
+# are 0.10.  MuJoCo has no restitution coefficient, so the direct-format
+# solref values below are empirical 2 ms fits: table mean e=0.951 for table
+# drops, paddle mean e=0.749 for 1--6 m/s fixed-face impacts.
+BALL_MATERIAL_FRICTION = 0.10
+TABLE_MATERIAL_FRICTION = 0.40
+PADDLE_MATERIAL_FRICTION = 0.50
+CONTACT_FRICTION = "0.1 0.1 0.005 0.0001 0.0001"
+CONTACT_SOLIMP = "0.95 0.99 0.001"
+CONTACT_MARGIN = 0.001
+TABLE_BALL_SOLREF = (-141000.0, -10.0)
+PADDLE_BALL_SOLREF = (-90000.0, -54.0)
 
 
 RIGHT_ARM_JOINTS = [f"r{i}" for i in range(1, 8)]
@@ -224,6 +242,33 @@ def _wrap_robot(worldbody: ET.Element) -> ET.Element:
     return robot_root
 
 
+def _offset_z(element: ET.Element, dz: float) -> None:
+    pos = np.fromstring(element.get("pos", "0 0 0"), sep=" ", dtype=np.float64)
+    if pos.size != 3:
+        raise ValueError(f"invalid MJCF pos for {element.tag} {element.get('name')}: {element.get('pos')}")
+    pos[2] += float(dz)
+    element.set("pos", _vec(pos))
+
+
+def _apply_legacy_sj_height(robot_root: ET.Element) -> None:
+    """Raise the collapsed SJ geometry and both arm roots to the old height."""
+
+    shifted: list[str] = []
+    for geom in robot_root.findall("./geom"):
+        mesh = geom.get("mesh", "")
+        if mesh in {"Link_sj", "Link_r0", "Link_l0"}:
+            _offset_z(geom, LEGACY_SJ_HEIGHT_OFFSET_M)
+            shifted.append(mesh)
+    for body in robot_root.findall("./body"):
+        name = body.get("name", "")
+        if name in {"Link_r1", "Link_l1"}:
+            _offset_z(body, LEGACY_SJ_HEIGHT_OFFSET_M)
+            shifted.append(name)
+    expected = {"Link_sj", "Link_r0", "Link_l0", "Link_r1", "Link_l1"}
+    if set(shifted) != expected:
+        raise RuntimeError(f"legacy SJ height patch mismatch: shifted={sorted(shifted)}")
+
+
 def _decorate_joints(root: ET.Element) -> None:
     joints = _joint_elements(root)
     for name, joint in joints.items():
@@ -251,7 +296,7 @@ def _decorate_paddle_contact(root: ET.Element) -> None:
         geom.set("name", "paddle_blade")
         geom.set("contype", "1")
         geom.set("conaffinity", "1")
-        geom.set("friction", "0.6 0.005 0.0001")
+        geom.set("friction", f"{_fmt(PADDLE_MATERIAL_FRICTION)} 0.005 0.0001")
         geom.set("solref", "0.002 1")
         geom.set("solimp", "0.95 0.99 0.001")
         return
@@ -309,7 +354,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "0.1 0.3 0.6 1",
             "contype": "1",
             "conaffinity": "1",
-            "friction": "0.1 0.005 0.0001",
+            "friction": f"{_fmt(TABLE_MATERIAL_FRICTION)} 0.005 0.0001",
             "solref": "0.002 1",
             "solimp": "0.95 0.99 0.001",
         },
@@ -325,6 +370,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "0.18 0.18 0.18 1",
             "contype": "1",
             "conaffinity": "1",
+            "friction": f"{_fmt(TABLE_MATERIAL_FRICTION)} 0.005 0.0001",
         },
     )
     ET.SubElement(
@@ -338,6 +384,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "0.9 0.9 0.9 0.5",
             "contype": "1",
             "conaffinity": "1",
+            "friction": f"{_fmt(TABLE_MATERIAL_FRICTION)} 0.005 0.0001",
         },
     )
     ball = ET.SubElement(worldbody, "body", {"name": "ball", "pos": "1.35 0 1.03"})
@@ -353,7 +400,7 @@ def _append_table_tennis_scene(worldbody: ET.Element) -> None:
             "rgba": "1 0.12 0.05 1",
             "contype": "1",
             "conaffinity": "1",
-            "friction": "0.1 0.005 0.0001",
+            "friction": f"{_fmt(BALL_MATERIAL_FRICTION)} 0.005 0.0001",
             "solref": "0.002 1",
             "solimp": "0.95 0.99 0.001",
         },
@@ -381,26 +428,31 @@ def _add_actuators(root: ET.Element) -> None:
 def _add_contact_pairs(root: ET.Element) -> None:
     _remove_children(root, "contact")
     contact = ET.Element("contact")
-    ET.SubElement(
-        contact,
-        "pair",
-        {
-            "geom1": "ball_geom",
-            "geom2": "table_top",
-            "solref": "-490000 -2",
-            "solimp": "0.95 0.99 0.001",
-            "margin": "0.06",
-        },
-    )
+    table_solref = f"{_fmt(TABLE_BALL_SOLREF[0])} {_fmt(TABLE_BALL_SOLREF[1])}"
+    paddle_solref = f"{_fmt(PADDLE_BALL_SOLREF[0])} {_fmt(PADDLE_BALL_SOLREF[1])}"
+    for table_geom in ("table_top", "table_support", "net"):
+        ET.SubElement(
+            contact,
+            "pair",
+            {
+                "geom1": "ball_geom",
+                "geom2": table_geom,
+                "solref": table_solref,
+                "solimp": CONTACT_SOLIMP,
+                "margin": _fmt(CONTACT_MARGIN),
+                "friction": CONTACT_FRICTION,
+            },
+        )
     ET.SubElement(
         contact,
         "pair",
         {
             "geom1": "ball_geom",
             "geom2": "paddle_blade",
-            "solref": "-200000 -5",
-            "solimp": "0.95 0.99 0.001",
-            "margin": "0.06",
+            "solref": paddle_solref,
+            "solimp": CONTACT_SOLIMP,
+            "margin": _fmt(CONTACT_MARGIN),
+            "friction": CONTACT_FRICTION,
         },
     )
     _insert_after(root, "actuator", contact)
@@ -422,6 +474,8 @@ def build_scene_xml(
     urdf_path: Path | str = DEFAULT_URDF,
     meshdir: Path | str = DEFAULT_MESHDIR,
     out_path: Path | str | None = None,
+    *,
+    legacy_sj_height: bool = False,
 ) -> Path:
     """Build a reusable MJCF scene from the training URDF.
 
@@ -453,7 +507,9 @@ def build_scene_xml(
     worldbody = root.find("worldbody")
     if worldbody is None:
         raise RuntimeError("generated MJCF has no worldbody")
-    _wrap_robot(worldbody)
+    robot_root = _wrap_robot(worldbody)
+    if legacy_sj_height:
+        _apply_legacy_sj_height(robot_root)
     _decorate_joints(root)
     _decorate_paddle_contact(root)
     _append_table_tennis_scene(worldbody)
@@ -467,9 +523,17 @@ def build_scene_xml(
     return out_path
 
 
-def load_scene(scene_xml: Path | str | None = DEFAULT_SCENE_XML) -> tuple[mujoco.MjModel, mujoco.MjData, Path]:
+def load_scene(
+    scene_xml: Path | str | None = DEFAULT_SCENE_XML,
+    *,
+    legacy_sj_height: bool = False,
+) -> tuple[mujoco.MjModel, mujoco.MjData, Path]:
     if scene_xml is None:
-        xml_path = build_scene_xml(out_path=Path(tempfile.gettempdir()) / "a1_h1_tt_scene.xml")
+        suffix = "_legacy_sj" if legacy_sj_height else ""
+        xml_path = build_scene_xml(
+            out_path=Path(tempfile.gettempdir()) / f"a1_h1_tt_scene{suffix}.xml",
+            legacy_sj_height=legacy_sj_height,
+        )
     else:
         xml_path = Path(scene_xml)
         if not xml_path.exists():

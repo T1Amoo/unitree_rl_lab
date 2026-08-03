@@ -224,7 +224,7 @@ def run(args: argparse.Namespace) -> dict:
     # Build a temporary MJCF from the current URDF on every run.  Loading the
     # checked-in generated XML can silently preserve stale fixed-joint geometry
     # after a URDF calibration update (notably the r1 centerline height).
-    model, data, xml_path = load_scene(None)
+    model, data, xml_path = load_scene(None, legacy_sj_height=args.legacy_sj_height)
     predictor_path = Path(args.policy).with_name("predictor.onnx")
     io = A1PolicyIO(model, data, predictor_path=predictor_path)
     initial_state_time_s = float("nan")
@@ -687,6 +687,7 @@ def run(args: argparse.Namespace) -> dict:
     if args.trace_csv is not None:
         print(f"[a1_sim2sim] live trace: {args.trace_csv}")
     print(f"[a1_sim2sim] scene: {xml_path}")
+    print(f"[a1_sim2sim] legacy_sj_height={args.legacy_sj_height}")
     try:
         with mj_viewer.launch_passive(model, data) as viewer:
             next_time = time.perf_counter()
@@ -721,6 +722,11 @@ def run(args: argparse.Namespace) -> dict:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
+    ap.add_argument(
+        "--legacy-sj-height",
+        action="store_true",
+        help="MuJoCo-only: raise SJ/arm roots by 0.1142 m to match the pre-calibration v1 policy geometry.",
+    )
     ap.add_argument("--headless-steps", type=int, default=0, help="Run N 50Hz control steps without viewer.")
     ap.add_argument("--serve-interval", type=int, default=250, help="Serve period in 50Hz control steps.")
     ap.add_argument(
