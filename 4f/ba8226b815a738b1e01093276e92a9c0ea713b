@@ -1,0 +1,32 @@
+deploy/robots/a1_h1/sim2sim/a1_scene.py
+  s_d7bdfbc037e805::t_1eaad5cb19937a 35-38,245-271,477-478,510-512,526-530,532-536
+  s_d7bdfbc037e805::t_fb05e2b9d1bfa0 43-55,299,357,373,387,403,431-445,452-455
+  s_d7bdfbc037e805::t_cdc33932634617 56
+deploy/robots/a1_h1/sim2sim/run_a1_tt_sim2sim.py
+  s_d7bdfbc037e805::t_1eaad5cb19937a 227,690,725-729
+deploy/robots/a1_h1/sim2sim/test_a1_sim2sim.py
+  s_d7bdfbc037e805::t_fb05e2b9d1bfa0 8-18,71-94
+  s_d7bdfbc037e805::t_8eeae180cee59a 95-96
+deploy/robots/a1_h1/sim2sim/serve.py
+  s_d7bdfbc037e805::t_1eaad5cb19937a 12,14,31-33
+deploy/robots/a1_h1/a1_tt_backhand/sim2sim/a1_scene.py
+  s_d7bdfbc037e805::t_28c6f8c67fb5b2 32-38,512,581,597,611,627,655-669,676-677,679
+deploy/robots/a1_h1/sim2sim/scene/a1_tt_scene.xml
+  s_d7bdfbc037e805::t_297f91788c1b43 46,49-51,112,126,130,134,138,140,148,188-189,191,201-204,207-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4fba8226b815a738b1e01093276e92a9c0ea713b",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
