@@ -1,0 +1,19 @@
+deploy/robots/a1_h1/MANUAL.md
+  s_d7bdfbc037e805::t_20b18b49c4f5e9 7-10,1711,1717,1719-1721,1723-1724
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b407d33b87501780be360fc6f121cf5cd2761a3b",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
