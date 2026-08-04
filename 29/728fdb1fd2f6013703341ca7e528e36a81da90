@@ -1,0 +1,32 @@
+deploy/robots/a1_h1/MANUAL.md
+  s_d7bdfbc037e805::t_16d4131994421b 1489-1541,1685-1693,1739-1740,1746-1747
+deploy/robots/a1_h1/tools/check_jetson_clock_sync.py
+  s_d7bdfbc037e805::t_b5234058e953cd 1-14,16-37,39-40,43-88,105,133-170
+  s_d7bdfbc037e805::t_31e72138dcd56e 15,38,41-42,89-104,106-132
+deploy/robots/a1_h1/src/a1_vrpn_ball_state_bridge.cpp
+  s_d7bdfbc037e805::t_b5234058e953cd 74-75,96-97,113,116-117,383-385,389-392,444-445
+deploy/robots/a1_h1/launch/a1_tt_backhand_9700_camera.launch.py
+  s_d7bdfbc037e805::t_b5234058e953cd 62-63
+deploy/robots/a1_h1/launch/a1_policy_bridge_cpp.launch.py
+  s_d7bdfbc037e805::t_b5234058e953cd 2,4,6,8,27-61,122-129,181-182
+deploy/robots/a1_h1/CMakeLists.txt
+  s_d7bdfbc037e805::t_b5234058e953cd 63-65
+deploy/robots/a1_h1/package.xml
+  s_d7bdfbc037e805::t_b5234058e953cd 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "29728fdb1fd2f6013703341ca7e528e36a81da90",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
