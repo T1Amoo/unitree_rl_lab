@@ -50,11 +50,13 @@ validation:
   max_epipolar_dist_px: 3.0
   min_disparity_px: 1.0
   world_bounds:
-    x_min: -1.4
+    x_min: -1.5
     x_max: 1.4
-    # 9700 policy target y is [-0.025, 0.107]. Keep margin for the incoming
-    # flight while excluding the persistent false stereo cluster at y~-0.5.
+    # Backhand-v2 target y is [-0.06, 0.20]. Keep flight margin while
+    # excluding the persistent false stereo cluster at y~-0.5.
     y_min: -0.35
     y_max: 0.35
     z_min: 0.0
-    z_max: 1.0
+    # Match the training camera envelope.  The old v1 ceiling of 1.0 m hid
+    # high balls until they were already close to the hit plane.
+    z_max: 1.7

@@ -1,9 +1,9 @@
 # A1/H1 乒乓 Sim2Real C++ Bridge — 完整命令行手册
 
 覆盖 **策略导出 / C++ ONNX bridge / ROS dry-run / sim2real 真机接入** 全流程命令。
-最后更新 2026-08-01（新增第 12 节：当前反手 9700 三机启动、曝光年龄闭环、SDK 快照与训练/部署参数合同）。
+最后更新 2026-08-04（新增第 13 节：反手 v2 model_13300 真机部署合同）。
 
-> **当前启动一律以第 12 节为准。** 第 11 节保留为 2026-07-25 的历史记录，其中旧 IP、正手坐标和旧反手 10999 参数不要再用于当前真机。
+> **当前启动以第 12 节的安全流程和第 13 节的 v2 参数覆盖为准。** 第 11 节保留为 2026-07-25 的历史记录，其中旧 IP、正手坐标和旧反手 10999 参数不要再用于当前真机。
 
 > 路径约定
 > - 训练仓库：`/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/`
@@ -1727,3 +1727,37 @@ ls -lht /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2re
 | curriculum | 0--10k easy，10k--20k 线性扩范围/速度，20k--30k full-range hold |
 
 部署新 v1 checkpoint 时，必须新建/更新对应 launch，把 v1 的 `target y/z`、default q、hit plane、tau 路线和 predictor 一起同步；不能把 v1 policy 塞进本节冻结的 9700 小目标框 launch 后直接上真机。
+
+---
+
+## 13. 当前反手 v2 model_13300 真机部署覆盖（2026-08-04）
+
+三机网络、DDS、DAMPING/FIXSTAND/READY/TABLE_TENNIS 安全顺序仍按第 12 节；
+本节只列出不得沿用 v1 的参数差异。
+
+当前策略与 predictor：
+
+```text
+Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-08-03_11-14-53_scratch_r115_netclear_highslow_paddle075_camera_tau_delay_5k10k5k/exported_model_13300/
+```
+
+部署合同：
+
+- base/ready/hit plane 仍为 `(-1.8,0,0.0282)`、`[1.450,-0.762,-2.050,1.445,0.206,-0.827,1.043]`、`x=-1.243`；
+- v2 actor/predictor 目标窗为 `y=[-0.06,0.20]`、`z=[0.84,1.38]`；
+- bridge 使用 `servo_filter_enabled=true`、`tau_s=[0.10,0.10,0.08,0.10,0.05,0.05,0.10]`、`qdes_slew_enabled=false`；
+- 只发布 7 维位置，SDK 保持 `dq_des=0`、`tau_ff=0`、100 Hz、`interpolation_mode=none`；
+- SDK 增益使用自然挥拍响应拟合时的 `[300,300,300,120,120,120,60] / [3.5,3.5,3.5,1,1,1,0.5]`，不要只读机器人 YAML 后省略启动覆盖；
+- Jetson age-lock 门限保持 `35 ms`，`max_grabs=8`；视觉 world bounds 为 `x=[-1.5,1.4]`、`y=[-0.35,0.35]`、`z=[0,1.7]`，避免旧 `z_max=1.0` 截断 v2 高球。
+
+无参数启动会读取上述 `exported_model_13300/policy.onnx`，predictor 默认从同目录自动发现：
+
+```bash
+cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
+source install/setup.bash
+ros2 launch sim2real_bridge_cpp a1_policy_bridge_cpp.launch.py
+```
+
+启动日志必须同时读回：`policy=model_13300` 对应目录、predictor enabled、
+`target_z=[0.840,1.380]`、逐关节 tau、`qdes_slew=false`。正式发球前先录制
+`record_sim2real_trace.py`，后续按同一来球/动作窗口与 MuJoCo direct-response 对比。

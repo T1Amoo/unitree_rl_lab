@@ -17,7 +17,7 @@ def _guess_lgy_root() -> Path:
 
 DEFAULT_POLICY = (
     _guess_lgy_root()
-    / "Pingpong_TTRL/logs/a1_tt_backhand_real_v1_y055h105/2026-08-01_11-05-58_scratch_backhand_camera_age35_tau_delay_dr_servey055h105_10k10k10k/exported/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-08-03_11-14-53_scratch_r115_netclear_highslow_paddle075_camera_tau_delay_5k10k5k/exported_model_13300/policy.onnx"
 )
 
 
@@ -228,7 +228,7 @@ def generate_launch_description():
                         "paddle_y_offset": -0.03,
                         "pred_sentinel": [-1.243, -0.03, 0.228],
                         "hit_target_y_range": [-0.06, 0.20],
-                        "hit_target_z_range": [0.84, 1.14],
+                        "hit_target_z_range": [0.84, 1.38],
                         "zero_action_when_ball_invalid": True,
                         "gate_confirm_frames": 1,
                         "gate_coast_frames": 5,
