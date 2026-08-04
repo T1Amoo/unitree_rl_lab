@@ -1486,6 +1486,59 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI=file:///tmp/cyclonedds_a1_backhand.xml
 ```
 
+#### 12.1.1 Jetson/本机时钟前置检查（强制、fail-closed）
+
+`/pingpong_location.header.stamp` 来自 Jetson wall clock，而本机 ball bridge
+用本机 wall clock 计算曝光年龄并外推。两机时钟偏差会被误当成相机延迟：例如
+Jetson 慢 `54 ms` 时，真实约 `54 ms` 的观测会被读成约 `108 ms`，球会被多外推
+约 `0.2--0.3 m`。
+
+首次部署只做一次 SSH 公钥安装；启动检查使用 `BatchMode=yes`，绝不在 launch
+里保存或等待密码：
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub jetson@192.168.1.231
+ssh -o BatchMode=yes jetson@192.168.1.231 'date +%s%N'
+```
+
+编译前可直接运行源码检查器：
+
+```bash
+cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
+python3 tools/check_jetson_clock_sync.py
+```
+
+检查器复用一条 SSH 连接做 7 次 NTP 式中点测量，默认健康条件为：
+
+- Jetson 相对本机绝对偏差 `<=10 ms`；
+- 最小 SSH RTT `<=40 ms`；
+- 低 RTT 样本偏差跨度 `<=6 ms`。
+
+健康时必须看到 `CLOCK_SYNC_OK`。看到 `CLOCK_SYNC_FAIL` 时不要进入 FixStand 或
+TableTennis，先在两机恢复 NTP 并重新检查：
+
+```bash
+# 本机
+sudo timedatectl set-ntp true
+sudo systemctl restart systemd-timesyncd
+timedatectl timesync-status
+
+# Jetson（sudo 密码在 Jetson 终端输入）
+ssh -t jetson@192.168.1.231 \
+  'sudo timedatectl set-ntp true; sudo systemctl restart systemd-timesyncd; timedatectl timesync-status'
+
+sleep 15
+python3 tools/check_jetson_clock_sync.py
+```
+
+若独立公网 NTP 仍不能把两机压到 `10 ms` 内，应修复共同时间源/PTP，不能放宽
+阈值继续部署。第 12.5 节的一键 launch 已内置同一检查：检查失败会在任何本机
+ball bridge、FSM、policy 节点启动前直接终止。仅在显式无相机离线诊断
+（`start_vrpn_ball_bridge:=false`）时才会跳过并打印警告。
+
+运行中还有第二层保护：ball bridge 只接受总 `source_age=10--90 ms` 的相机帧；
+越界帧立即丢弃，策略只会看到 stale ball，不会使用错误年龄继续外推。
+
 ### 12.2 A1 机器人端：DAMIAO SDK 节点
 
 登录并先确认当前节点是否已在运行：
@@ -1629,6 +1682,15 @@ source install/setup.bash
 ros2 launch sim2real_bridge_cpp a1_policy_bridge_cpp.launch.py
 ```
 
+launch 首行必须先出现类似：
+
+```text
+CLOCK_SYNC_OK host=jetson@192.168.1.231 offset_ms=... limits=offset:10.0,...
+```
+
+如果出现 `CLOCK_SYNC_FAIL`，launch 会 fail-closed，后面的三个本机节点均不会
+启动。不要用 `clock_preflight_enabled:=false` 绕过真机相机部署检查。
+
 这个 launch 同时固定：
 
 ```text
@@ -1674,12 +1736,15 @@ timeout 8 ros2 topic hz /ball/state
 timeout 8 ros2 topic hz /right_joint_states
 ros2 topic echo /a1_tt/fsm_state --once
 ros2 topic echo /sim2real/gate --once
+ros2 param get /a1_backhand_camera_ball_state_bridge min_source_age_s
+ros2 param get /a1_backhand_camera_ball_state_bridge max_source_age_s
 ros2 param get /a1_tt_backhand_policy_bridge servo_filter_enabled
 ros2 param get /a1_tt_backhand_policy_bridge servo_tau_s
 ros2 param get /a1_tt_backhand_policy_bridge qdes_slew_enabled
 ```
 
-必须看到 `servo_filter_enabled=true`、上述 7 个 `tau_s` 和 `qdes_slew_enabled=false`。
+必须看到 `min_source_age_s=0.01`、`max_source_age_s=0.09`、
+`servo_filter_enabled=true`、上述 7 个 `tau_s` 和 `qdes_slew_enabled=false`。
 
 ### 12.7 实机宽日志录制
 

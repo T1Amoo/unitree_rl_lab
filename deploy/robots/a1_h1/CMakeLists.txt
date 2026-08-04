@@ -60,5 +60,8 @@ install(TARGETS a1_policy_bridge_cpp a1_vrpn_ball_state_bridge a1_tt_fsm_supervi
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
+install(PROGRAMS tools/check_jetson_clock_sync.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()

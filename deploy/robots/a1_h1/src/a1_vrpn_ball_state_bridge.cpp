@@ -71,7 +71,8 @@ public:
         acquire_frames_ = declare_parameter<int>("acquire_frames", 3);
         reacquire_frames_ = declare_parameter<int>("reacquire_frames", 5);
         reset_gap_s_ = declare_parameter<double>("reset_gap_s", 0.25);
-        max_source_age_s_ = declare_parameter<double>("max_source_age_s", 0.30);
+        min_source_age_s_ = declare_parameter<double>("min_source_age_s", 0.01);
+        max_source_age_s_ = declare_parameter<double>("max_source_age_s", 0.09);
         max_extrapolation_s_ = declare_parameter<double>("max_extrapolation_s", 0.16);
         gravity_mps2_ = declare_parameter<double>("gravity_mps2", -9.81);
         table_bounce_enabled_ = declare_parameter<bool>("table_bounce_enabled", true);
@@ -92,7 +93,8 @@ public:
         acquire_frames_ = std::max(2, acquire_frames_);
         reacquire_frames_ = std::max(2, reacquire_frames_);
         reset_gap_s_ = std::max(max_dt_s_, reset_gap_s_);
-        max_source_age_s_ = std::max(0.0, max_source_age_s_);
+        min_source_age_s_ = std::max(-0.02, min_source_age_s_);
+        max_source_age_s_ = std::max(min_source_age_s_, max_source_age_s_);
         max_extrapolation_s_ = std::max(0.0, max_extrapolation_s_);
         table_restitution_ = clamp(table_restitution_, 0.0, 1.2);
         diag_every_ = std::max(0, diag_every_);
@@ -108,10 +110,11 @@ public:
             get_logger(),
             "ready: %s -> %s [x,y,z,vx,vy,vz], origin=%s temporal_filter=%s "
             "alpha=%.2f beta=%.2f innovation=%.3fm acquire=%d reacquire=%d "
-            "extrapolate<=%.3fs table_bounce=%s@z=%.3f/e=%.2f",
+            "source_age=[%.3f,%.3f]s extrapolate<=%.3fs table_bounce=%s@z=%.3f/e=%.2f",
             input_topic_.c_str(), output_topic_.c_str(), vecToString(origin_).c_str(),
             temporal_filter_enabled_ ? "true" : "false", filter_alpha_, filter_beta_,
-            max_innovation_m_, acquire_frames_, reacquire_frames_, max_extrapolation_s_,
+            max_innovation_m_, acquire_frames_, reacquire_frames_,
+            min_source_age_s_, max_source_age_s_, max_extrapolation_s_,
             table_bounce_enabled_ ? "true" : "false", table_ball_center_z_, table_restitution_);
     }
 
@@ -377,12 +380,16 @@ private:
         const double source_t = sampleTimeSec(msg);
         const double receive_t = now().seconds();
         const double source_age = receive_t - source_t;
-        if (!std::isfinite(source_age) || source_age < -0.02 || source_age > max_source_age_s_) {
+        if (!std::isfinite(source_age)
+            || source_age < min_source_age_s_
+            || source_age > max_source_age_s_) {
             ++stale_measurements_;
             RCLCPP_WARN_THROTTLE(
                 get_logger(), *get_clock(), 1000,
-                "drop camera sample with source_age=%.1fms (limit=%.1fms)",
-                1000.0 * source_age, 1000.0 * max_source_age_s_);
+                "drop camera sample with source_age=%.1fms (allowed=[%.1f, %.1f]ms); "
+                "check Jetson/local clock sync and camera freshness",
+                1000.0 * source_age,
+                1000.0 * min_source_age_s_, 1000.0 * max_source_age_s_);
             return;
         }
 
@@ -434,7 +441,8 @@ private:
     int acquire_frames_ = 3;
     int reacquire_frames_ = 5;
     double reset_gap_s_ = 0.25;
-    double max_source_age_s_ = 0.30;
+    double min_source_age_s_ = 0.01;
+    double max_source_age_s_ = 0.09;
     double max_extrapolation_s_ = 0.16;
     double gravity_mps2_ = -9.81;
     bool table_bounce_enabled_ = true;

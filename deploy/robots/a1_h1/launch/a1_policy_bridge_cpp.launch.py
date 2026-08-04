@@ -1,8 +1,11 @@
 from pathlib import Path
+import subprocess
 
+from ament_index_python.packages import get_package_prefix
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
+from launch.logging import get_logger
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -19,6 +22,41 @@ DEFAULT_POLICY = (
     _guess_lgy_root()
     / "Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-08-03_11-14-53_scratch_r115_netclear_highslow_paddle075_camera_tau_delay_5k10k5k/exported_model_13300/policy.onnx"
 )
+
+
+def _is_true(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _clock_preflight(context):
+    enabled = _is_true(LaunchConfiguration("clock_preflight_enabled").perform(context))
+    camera_enabled = _is_true(LaunchConfiguration("start_vrpn_ball_bridge").perform(context))
+    if not enabled or not camera_enabled:
+        get_logger("a1_clock_preflight").warning(
+            "Jetson clock preflight skipped; this is allowed only for offline/no-camera diagnostics"
+        )
+        return []
+
+    package_prefix = Path(get_package_prefix("sim2real_bridge_cpp"))
+    checker = package_prefix / "lib/sim2real_bridge_cpp/check_jetson_clock_sync.py"
+    command = [
+        str(checker),
+        "--host", LaunchConfiguration("clock_preflight_host").perform(context),
+        "--user", LaunchConfiguration("clock_preflight_user").perform(context),
+        "--samples", LaunchConfiguration("clock_preflight_samples").perform(context),
+        "--max-offset-ms", LaunchConfiguration("clock_preflight_max_offset_ms").perform(context),
+        "--max-rtt-ms", LaunchConfiguration("clock_preflight_max_rtt_ms").perform(context),
+        "--max-spread-ms", LaunchConfiguration("clock_preflight_max_spread_ms").perform(context),
+    ]
+    result = subprocess.run(command, check=False, capture_output=True, text=True)
+    detail = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Jetson/local clock preflight failed; fail-closed before starting deployment nodes. "
+            + (detail or f"checker rc={result.returncode}")
+        )
+    get_logger("a1_clock_preflight").info(detail)
+    return []
 
 
 def generate_launch_description():
@@ -81,6 +119,14 @@ def generate_launch_description():
             DeclareLaunchArgument("test_warmup_s", default_value="2.0"),
             DeclareLaunchArgument("test_post_hold_s", default_value="1.0"),
             DeclareLaunchArgument("test_ramp_s", default_value="0.5"),
+            DeclareLaunchArgument("clock_preflight_enabled", default_value="true"),
+            DeclareLaunchArgument("clock_preflight_host", default_value="192.168.1.231"),
+            DeclareLaunchArgument("clock_preflight_user", default_value="jetson"),
+            DeclareLaunchArgument("clock_preflight_samples", default_value="7"),
+            DeclareLaunchArgument("clock_preflight_max_offset_ms", default_value="10.0"),
+            DeclareLaunchArgument("clock_preflight_max_rtt_ms", default_value="40.0"),
+            DeclareLaunchArgument("clock_preflight_max_spread_ms", default_value="6.0"),
+            OpaqueFunction(function=_clock_preflight),
             Node(
                 package="armcontrol",
                 executable="inference_arm_control_node",
@@ -132,7 +178,8 @@ def generate_launch_description():
                         "acquire_frames": 2,
                         "reacquire_frames": 5,
                         "reset_gap_s": 0.25,
-                        "max_source_age_s": 0.30,
+                        "min_source_age_s": 0.01,
+                        "max_source_age_s": 0.09,
                         "max_extrapolation_s": 0.16,
                         "gravity_mps2": -9.81,
                         "table_bounce_enabled": True,
