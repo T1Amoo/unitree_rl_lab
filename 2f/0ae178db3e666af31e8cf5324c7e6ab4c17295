@@ -1,0 +1,21 @@
+deploy/robots/a1_h1/launch/a1_policy_bridge_cpp.launch.py
+  s_d7bdfbc037e805::t_6a6e687c22f31e 23,154-161
+deploy/robots/a1_h1/MANUAL.md
+  s_d7bdfbc037e805::t_6a6e687c22f31e 4,1580-1582,1586-1589,1774,1800,1808,1816,1820,1828
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2f0ae178db3e666af31e8cf5324c7e6ab4c17295",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
