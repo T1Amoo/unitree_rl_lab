@@ -1,0 +1,23 @@
+deploy/robots/a1_h1/MANUAL.md
+  s_d7bdfbc037e805::t_961fe98abed3cf 4,6,1730-1763
+deploy/robots/a1_h1/jetson_camera/detect_config_a1_backhand.yaml
+  s_d7bdfbc037e805::t_961fe98abed3cf 53,55-56,60-62
+deploy/robots/a1_h1/launch/a1_policy_bridge_cpp.launch.py
+  s_d7bdfbc037e805::t_961fe98abed3cf 20,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0094d6bf76b50a07b1b6f810e4af37556c043d0a",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
