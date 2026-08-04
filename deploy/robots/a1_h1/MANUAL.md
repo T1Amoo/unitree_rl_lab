@@ -4,6 +4,10 @@
 最后更新 2026-08-04（新增第 13 节：反手 v2 model_13300 真机部署合同）。
 
 > **当前启动以第 12 节的安全流程和第 13 节的 v2 参数覆盖为准。** 第 11 节保留为 2026-07-25 的历史记录，其中旧 IP、正手坐标和旧反手 10999 参数不要再用于当前真机。
+>
+> **当前真机禁止用 `ros2 topic pub /a1_tt/fsm_command` 切换状态。** 启动程序后保持
+> DAMPING，FixStand、TableTennis 和退回 DAMPING 均由现场人员通过手柄
+> `27/28/21` 操作；终端只观察 `/a1_tt/fsm_state`，不得代替人员切状态。
 
 > 路径约定
 > - 训练仓库：`/media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/Pingpong_TTRL/`
@@ -1704,28 +1708,20 @@ camera z   = table frame +0.76；没有旧版 y+0.76
 
 ### 12.6 安全状态顺序和诊断
 
-启动后先保持安全态：
+启动后先保持 DAMPING，只读取状态，不发布任何 FSM 命令：
 
 ```bash
-ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'damping'}"
 ros2 topic echo /a1_tt/fsm_state --once
 ```
 
-测试时严格按顺序：
+测试时严格由现场人员通过手柄按顺序操作：
 
-```bash
-# 1. DAMPING -> FIXSTAND -> READY
-ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'fixstand'}"
-ros2 topic echo /a1_tt/fsm_state --once
+1. 手柄 `27`：DAMPING -> FixStand，等待 `/a1_tt/fsm_state` 显示 READY；
+2. 确认 READY、周围无人且球路安全后，手柄 `28`：进入 TableTennis；
+3. 任意异常，现场人员立即按手柄 `21`：退回 DAMPING。
 
-# 2. 只有确认 state=READY、周围无人且球路安全后，才放行策略
-ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'table_tennis'}"
-
-# 3. 任意异常立即进入阻尼安全态
-ros2 topic pub --once /a1_tt/fsm_command std_msgs/msg/String "{data: 'damping'}"
-```
-
-手柄映射：`27=FixStand`、`28=TableTennis`、`21= DAMPING`。当前 21 已不是旧文档里笼统写的 Passive。
+当前真机不得用 `/a1_tt/fsm_command` 的 ROS 命令代替上述手柄操作。当前 `21`
+明确表示 DAMPING，不再沿用旧文档里笼统写的 Passive。
 
 关键检查：
 
