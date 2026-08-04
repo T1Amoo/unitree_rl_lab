@@ -20,7 +20,7 @@ def _guess_lgy_root() -> Path:
 
 DEFAULT_POLICY = (
     _guess_lgy_root()
-    / "Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-08-03_11-14-53_scratch_r115_netclear_highslow_paddle075_camera_tau_delay_5k10k5k/exported_model_13300/policy.onnx"
+    / "Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-08-03_11-14-53_scratch_r115_netclear_highslow_paddle075_camera_tau_delay_5k10k5k/exported_model_15500/policy.onnx"
 )
 
 
@@ -151,9 +151,14 @@ def generate_launch_description():
                         "kds": [3.5, 3.5, 3.5, 1.0, 1.0, 1.0, 0.5],
                         "torque_ff_scale": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                         "enable_mit_velocity": False,
-                        "max_vel": [10.0, 10.0, 10.0, 30.0, 30.0, 30.0, 30.0],
-                        "max_acc": [80.0, 80.0, 80.0, 160.0, 160.0, 160.0, 160.0],
-                        "max_delta_per_cycle": [0.08, 0.08, 0.08, 0.16, 0.16, 0.16, 0.16],
+                        # The trained/deployed q_des route is the per-joint tau_s
+                        # filter in a1_policy_bridge_cpp.  armcontrol currently
+                        # requires seven finite safety-limit entries, so use
+                        # deliberately non-binding values instead of adding a
+                        # second slew/velocity/acceleration trajectory filter.
+                        "max_vel": [1000.0] * 7,
+                        "max_acc": [100000.0] * 7,
+                        "max_delta_per_cycle": [100.0] * 7,
                     }
                 ],
             ),

@@ -1,7 +1,7 @@
 # A1/H1 乒乓 Sim2Real C++ Bridge — 完整命令行手册
 
 覆盖 **策略导出 / C++ ONNX bridge / ROS dry-run / sim2real 真机接入** 全流程命令。
-最后更新 2026-08-04（新增第 13 节：反手 v2 model_13300 真机部署合同）。
+最后更新 2026-08-04（第 13 节：反手 v2 model_15500 真机部署合同）。
 
 > **当前启动以第 12 节的安全流程和第 13 节的 v2 参数覆盖为准。** 第 11 节保留为 2026-07-25 的历史记录，其中旧 IP、正手坐标和旧反手 10999 参数不要再用于当前真机。
 >
@@ -1577,9 +1577,15 @@ tmux new-session -d -s a1_backhand_armcontrol \
   -p kds:=[3.5,3.5,3.5,1.0,1.0,1.0,0.5] \
   -p torque_ff_scale:=[0.0,0.0,0.0,0.0,0.0,0.0,0.0] \
   -p enable_mit_velocity:=false \
-  -p max_delta_per_cycle:=[0.08,0.08,0.08,0.16,0.16,0.16,0.16] \
+  -p max_vel:=[1000.0,1000.0,1000.0,1000.0,1000.0,1000.0,1000.0] \
+  -p max_acc:=[100000.0,100000.0,100000.0,100000.0,100000.0,100000.0,100000.0] \
+  -p max_delta_per_cycle:=[100.0,100.0,100.0,100.0,100.0,100.0,100.0] \
   > /tmp/a1_backhand_armcontrol.log 2>&1'"
 ```
+
+`armcontrol` 当前要求上述三组参数必须各有 7 个有限值，因此不能传空数组；这里使用
+远高于关节工作范围的值使它们不参与轨迹生成。当前 action/q_des 路径只使用 policy
+bridge 的逐关节 `tau_s` 一阶低通；仍保留 URDF 关节位置边界和 DAMIAO 显式力矩边界。
 
 确认节点、串口和关节反馈：
 
@@ -1765,7 +1771,7 @@ ls -lht /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2re
 
 ### 12.8 停止顺序
 
-1. 先发 `damping` 并确认 `/a1_tt/fsm_state`；
+1. 现场人员先按手柄 `21` 退回 DAMPING，并确认 `/a1_tt/fsm_state`；
 2. 录制终端 `Ctrl-C`，确认 CSV/metadata 落盘；
 3. 本机 launch 前台 `Ctrl-C`；
 4. 相机服务通常保持运行，不需要随策略停止；
@@ -1791,7 +1797,7 @@ ls -lht /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2re
 
 ---
 
-## 13. 当前反手 v2 model_13300 真机部署覆盖（2026-08-04）
+## 13. 当前反手 v2 model_15500 真机部署覆盖（2026-08-04）
 
 三机网络、DDS、DAMPING/FIXSTAND/READY/TABLE_TENNIS 安全顺序仍按第 12 节；
 本节只列出不得沿用 v1 的参数差异。
@@ -1799,7 +1805,7 @@ ls -lht /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2re
 当前策略与 predictor：
 
 ```text
-Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-08-03_11-14-53_scratch_r115_netclear_highslow_paddle075_camera_tau_delay_5k10k5k/exported_model_13300/
+Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-08-03_11-14-53_scratch_r115_netclear_highslow_paddle075_camera_tau_delay_5k10k5k/exported_model_15500/
 ```
 
 部署合同：
@@ -1807,11 +1813,11 @@ Pingpong_TTRL/logs/a1_tt_backhand_real_v2_r115_netclear_highslow_paddle075/2026-
 - base/ready/hit plane 仍为 `(-1.8,0,0.0282)`、`[1.450,-0.762,-2.050,1.445,0.206,-0.827,1.043]`、`x=-1.243`；
 - v2 actor/predictor 目标窗为 `y=[-0.06,0.20]`、`z=[0.84,1.38]`；
 - bridge 使用 `servo_filter_enabled=true`、`tau_s=[0.10,0.10,0.08,0.10,0.05,0.05,0.10]`、`qdes_slew_enabled=false`；
-- 只发布 7 维位置，SDK 保持 `dq_des=0`、`tau_ff=0`、100 Hz、`interpolation_mode=none`；
+- 只发布 7 维位置，SDK 保持 `dq_des=0`、`tau_ff=0`、100 Hz、`interpolation_mode=none`；SDK 的 `max_delta_per_cycle/max_vel/max_acc` 使用第 12.2 节非约束值，不得再叠加第二条 q_des 轨迹限幅；
 - SDK 增益使用自然挥拍响应拟合时的 `[300,300,300,120,120,120,60] / [3.5,3.5,3.5,1,1,1,0.5]`，不要只读机器人 YAML 后省略启动覆盖；
 - Jetson age-lock 门限保持 `35 ms`，`max_grabs=8`；视觉 world bounds 为 `x=[-1.5,1.4]`、`y=[-0.35,0.35]`、`z=[0,1.7]`，避免旧 `z_max=1.0` 截断 v2 高球。
 
-无参数启动会读取上述 `exported_model_13300/policy.onnx`，predictor 默认从同目录自动发现：
+无参数启动会读取上述 `exported_model_15500/policy.onnx`，predictor 默认从同目录自动发现：
 
 ```bash
 cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/robots/a1_h1
@@ -1819,6 +1825,6 @@ source install/setup.bash
 ros2 launch sim2real_bridge_cpp a1_policy_bridge_cpp.launch.py
 ```
 
-启动日志必须同时读回：`policy=model_13300` 对应目录、predictor enabled、
+启动日志必须同时读回：`policy=model_15500` 对应目录、predictor enabled、
 `target_z=[0.840,1.380]`、逐关节 tau、`qdes_slew=false`。正式发球前先录制
 `record_sim2real_trace.py`，后续按同一来球/动作窗口与 MuJoCo direct-response 对比。
