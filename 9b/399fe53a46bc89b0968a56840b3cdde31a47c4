@@ -1,0 +1,19 @@
+deploy/robots/a1_h1/sim2sim/run_a1_tt_sim2sim.py
+  s_d7bdfbc037e805::t_361b64eccaf291 735-736
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9b399fe53a46bc89b0968a56840b3cdde31a47c4",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
