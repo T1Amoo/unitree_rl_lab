@@ -1653,6 +1653,57 @@ journalctl -u pingpong-detect.service -n 120 --no-pager -o cat \
 
 健康判据：能看到一次 `[FRESH] locked`，运行中没有持续增长的 `drop stale`；检测到球时，周期 `[GRAPH]` 行应带 `source_age/grabs/stale_drop`。
 
+#### 12.3.1 ZED-X 曝光/增益启动锁和实球扫描
+
+`main_graph.cpp` 会关闭 AEC/AGC；旧流程没有继续设置手动曝光和增益，因此相机/服务
+重启后可能冻结在任意遗留值。2026-08-05 异常现场读回两目均为
+`exposure=15667 us, gain=1269`，接近 60 Hz 的整个帧周期，运动球存在明显拖影风险。
+
+版本化 systemd drop-in 现在通过 `ExecStartPost` 调用：
+
+```text
+/home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera/configure_zed_exposure.sh
+```
+
+默认先使用 `6000 us / gain_raw=1601`。脚本等待真正的 C++ graph 节点完成相机打开，
+同时写入 `/dev/video0`、`/dev/video1`，连续三次读回一致才输出
+`CAMERA_SETTINGS_OK`。设备不是 ZED-X、写入失败或读回漂移都会令 systemd 启动失败，
+不得绕过。
+
+同步/安装 drop-in 后执行：
+
+```bash
+sudo install -m 0644 \
+  /home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera/pingpong-detect-a1-backhand.conf \
+  /etc/systemd/system/pingpong-detect.service.d/a1-backhand.conf
+sudo systemctl daemon-reload
+```
+
+重启仍必须先由现场人员通过手柄退到 DAMPING。重启后核对：
+
+```bash
+sudo systemctl restart pingpong-detect.service
+systemctl status pingpong-detect.service --no-pager -l
+journalctl -u pingpong-detect.service -n 160 --no-pager -o cat \
+  | grep -E 'CAMERA_SETTINGS|\[FRESH\]|\[GRAPH\]|ERROR|WARN'
+for d in /dev/video0 /dev/video1; do
+  v4l2-ctl -d "$d" --get-ctrl=exposure,gain
+done
+```
+
+现场选型只比较相机原始检测连续性。每档约 20 个正常球，依次实时设置：
+
+```bash
+CAM=/home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera/configure_zed_exposure.sh
+"$CAM" 6000 1601 0
+"$CAM" 4000 1601 0
+"$CAM" 2000 1601 0
+```
+
+每档独立记录 `/pingpong_location`；用每条物理来球的可见帧数中位数、长轨迹比例和
+空场假目标率选型，不用命中率代替相机指标。选定值必须回写版本化 drop-in 并经 Git
+提交/push、Jetson pull，不能只留在一次性的 `v4l2-ctl` 状态里。
+
 ### 12.4 Jetson SDK/运行环境基线快照
 
 已保存两份完整可比对快照（源码、build/install 二进制、配置、systemd、动态库、JetPack/CUDA/dpkg、网络、权重 hash 和日志清单；没有复制 5.4 GB 原始 yellow_log）。`pre` 专门用于复盘这次 age-lock 改动；今后判断稳定部署环境是否漂移，以 `post` 为基线：
