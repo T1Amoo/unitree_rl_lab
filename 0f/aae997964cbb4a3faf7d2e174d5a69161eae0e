@@ -1,0 +1,19 @@
+deploy/robots/a1_h1/src/a1_tt_fsm_supervisor.cpp
+  s_d7bdfbc037e805::t_b6bb5d75e784f3 589-594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0faae997964cbb4a3faf7d2e174d5a69161eae0e",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
