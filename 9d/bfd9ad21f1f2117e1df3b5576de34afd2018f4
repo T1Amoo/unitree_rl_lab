@@ -1,0 +1,27 @@
+deploy/robots/a1_h1/jetson_camera/configure_zed_exposure.sh
+  s_d7bdfbc037e805::t_9d4f719b407be9 9-11,34-52
+  s_d7bdfbc037e805::t_e0cc9edd00e2a7 1-8,12-33,53-101
+deploy/robots/a1_h1/MANUAL.md
+  s_d7bdfbc037e805::t_bb2d4612c6226d 1656-1706
+deploy/robots/a1_h1/jetson_camera/README.md
+  s_d7bdfbc037e805::t_bb2d4612c6226d 31-45,56-70
+  s_d7bdfbc037e805::t_8080d9022f3c25 71
+deploy/robots/a1_h1/jetson_camera/pingpong-detect-a1-backhand.conf
+  s_d7bdfbc037e805::t_e0cc9edd00e2a7 2-3,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9dbfd9ad21f1f2117e1df3b5576de34afd2018f4",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
