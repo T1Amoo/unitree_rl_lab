@@ -31,6 +31,12 @@ def _is_true(value: str) -> bool:
 def _clock_preflight(context):
     enabled = _is_true(LaunchConfiguration("clock_preflight_enabled").perform(context))
     camera_enabled = _is_true(LaunchConfiguration("start_vrpn_ball_bridge").perform(context))
+    relative_timing = _is_true(LaunchConfiguration("relative_camera_timing_enabled").perform(context))
+    if camera_enabled and relative_timing:
+        get_logger("a1_clock_preflight").info(
+            "Jetson-relative camera timing enabled; absolute clock offset is diagnostic-only"
+        )
+        return []
     if not enabled or not camera_enabled:
         get_logger("a1_clock_preflight").warning(
             "Jetson clock preflight skipped; this is allowed only for offline/no-camera diagnostics"
@@ -75,6 +81,9 @@ def generate_launch_description():
     fixstand_use_movej = LaunchConfiguration("fixstand_use_movej")
     fixstand_enable_settle_s = LaunchConfiguration("fixstand_enable_settle_s")
     vrpn_ball_topic = LaunchConfiguration("vrpn_ball_topic")
+    relative_camera_topic = LaunchConfiguration("relative_camera_topic")
+    relative_camera_timing_enabled = LaunchConfiguration("relative_camera_timing_enabled")
+    relative_camera_transport_delay_s = LaunchConfiguration("relative_camera_transport_delay_s")
     ball_state_topic = LaunchConfiguration("ball_state_topic")
     test_enabled = LaunchConfiguration("test_enabled")
     test_signal_type = LaunchConfiguration("test_signal_type")
@@ -106,6 +115,9 @@ def generate_launch_description():
             DeclareLaunchArgument("fixstand_use_movej", default_value="true"),
             DeclareLaunchArgument("fixstand_enable_settle_s", default_value="0.5"),
             DeclareLaunchArgument("vrpn_ball_topic", default_value="/pingpong_location"),
+            DeclareLaunchArgument("relative_camera_topic", default_value="/pingpong_location_relative"),
+            DeclareLaunchArgument("relative_camera_timing_enabled", default_value="true"),
+            DeclareLaunchArgument("relative_camera_transport_delay_s", default_value="0.015"),
             DeclareLaunchArgument("ball_state_topic", default_value="/ball/state"),
             DeclareLaunchArgument("test_enabled", default_value="false"),
             DeclareLaunchArgument("test_signal_type", default_value="sine"),
@@ -171,6 +183,13 @@ def generate_launch_description():
                 parameters=[
                     {
                         "input_topic": vrpn_ball_topic,
+                        "relative_input_topic": relative_camera_topic,
+                        "relative_timing_enabled": ParameterValue(
+                            relative_camera_timing_enabled, value_type=bool
+                        ),
+                        "relative_transport_delay_s": ParameterValue(
+                            relative_camera_transport_delay_s, value_type=float
+                        ),
                         "output_topic": ball_state_topic,
                         "origin_in_training_world": [0.0, 0.0, 0.76],
                         "rotation_wxyz_to_training": [1.0, 0.0, 0.0, 0.0],

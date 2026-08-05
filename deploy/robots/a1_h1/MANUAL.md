@@ -1490,15 +1490,35 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI=file:///tmp/cyclonedds_a1_backhand.xml
 ```
 
-#### 12.1.1 Jetson/本机时钟前置检查（强制、fail-closed）
+#### 12.1.1 Jetson/本机相机时间合同（相对帧龄、fail-closed）
 
-`/pingpong_location.header.stamp` 来自 Jetson wall clock，而本机 ball bridge
-用本机 wall clock 计算曝光年龄并外推。两机时钟偏差会被误当成相机延迟：例如
-Jetson 慢 `54 ms` 时，真实约 `54 ms` 的观测会被读成约 `108 ms`，球会被多外推
-约 `0.2--0.3 m`。
+2026-08-05 连续检查确认：Jetson 相对本机绝对时钟在约 100 秒内从
+`-53.4 ms` 漂到 `-60.8 ms`，而 SSH RTT 仅 `11--15 ms`。因此不能用“开机校准
+一次绝对偏差”代替逐帧时间管理；振荡器漂移会在运行中重新引入位置外推误差。
 
-首次部署只做一次 SSH 公钥安装；启动检查使用 `BatchMode=yes`，绝不在 launch
-里保存或等待密码：
+当前默认链路不再比较两台机器的 wall clock：
+
+```text
+ZED exposure stamp
+  -> Jetson detector /pingpong_location_raw
+  -> Jetson relative relay: age = Jetson_now - exposure_stamp
+  -> /pingpong_location_relative (pose.covariance[0]=age_s, [1]=schema 1)
+  -> 本机 ball bridge: total_age = relay_age + 15 ms transport
+  -> source_t_local = local_receive_t - total_age
+```
+
+曝光时间与 relay 当前时间都来自同一台 Jetson，时钟偏置和慢漂会逐帧抵消。本机
+默认只补 `15 ms` DDS/网线传输时间，并继续要求总帧龄处于 `10--90 ms`，越界立即
+丢弃。`/pingpong_location` 仍由 relay 原样转发，供旧录制/检查工具使用。
+
+该改动只属于 A1 乒乓球项目：只改 pingpong-detect 的 ROS topic remap、增加一个
+sidecar relay，以及本项目 ball bridge 的订阅方式。它不修改 ZED SDK/采集服务、
+TensorRT/AprilTag 算法、其他相机服务，也不调整 Jetson 全局系统时间。
+
+绝对时钟检查器保留为网络/系统诊断工具，但相对时间模式下不再阻止 launch：
+
+首次部署只做一次 SSH 公钥安装；检查使用 `BatchMode=yes`，不在 launch 里保存
+或等待密码：
 
 ```bash
 ssh-copy-id -i ~/.ssh/id_ed25519.pub jetson@192.168.1.231
@@ -1512,14 +1532,13 @@ cd /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/unitree_rl_lab/deploy/ro
 python3 tools/check_jetson_clock_sync.py
 ```
 
-检查器复用一条 SSH 连接做 7 次 NTP 式中点测量，默认健康条件为：
+检查器复用一条 SSH 连接做 7 次 NTP 式中点测量，诊断健康条件为：
 
 - Jetson 相对本机绝对偏差 `<=10 ms`；
 - 最小 SSH RTT `<=40 ms`；
 - 低 RTT 样本偏差跨度 `<=6 ms`。
 
-健康时必须看到 `CLOCK_SYNC_OK`。看到 `CLOCK_SYNC_FAIL` 时不要进入 FixStand 或
-TableTennis，先在两机恢复 NTP 并重新检查：
+`CLOCK_SYNC_FAIL` 说明绝对 wall clock 不可用于旧时间链路；可尝试恢复 NTP：
 
 ```bash
 # 本机
@@ -1535,13 +1554,11 @@ sleep 15
 python3 tools/check_jetson_clock_sync.py
 ```
 
-若独立公网 NTP 仍不能把两机压到 `10 ms` 内，应修复共同时间源/PTP，不能放宽
-阈值继续部署。第 12.5 节的一键 launch 已内置同一检查：检查失败会在任何本机
-ball bridge、FSM、policy 节点启动前直接终止。仅在显式无相机离线诊断
-（`start_vrpn_ball_bridge:=false`）时才会跳过并打印警告。
-
-运行中还有第二层保护：ball bridge 只接受总 `source_age=10--90 ms` 的相机帧；
-越界帧立即丢弃，策略只会看到 stale ball，不会使用错误年龄继续外推。
+只有显式使用旧绝对时间模式
+`relative_camera_timing_enabled:=false` 时，launch 才要求 `CLOCK_SYNC_OK` 并
+fail-closed。正常真机启动保持默认 `relative_camera_timing_enabled:=true`；如果
+Jetson relay 未启动，ball bridge 收不到相对 topic，策略只会看到 stale ball，
+不会回退到错误的绝对时钟估计。
 
 ### 12.2 A1 机器人端：DAMIAO SDK 节点
 
@@ -1636,13 +1653,29 @@ Jetson 当前 `/usr/local/lib/python3.10/dist-packages/cython-3.2.5.dist-info` �
 ros2 topic echo /a1_tt/fsm_state --once
 ```
 
-确认安全后在 Jetson 执行：
+首次启用相对时间 sidecar 时，安装两个受 Git 管理的 systemd 文件：
 
 ```bash
-sudo systemctl restart pingpong-detect.service
+CAM_OVERLAY=/home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera
+sudo install -m 0644 "$CAM_OVERLAY/pingpong-detect-a1-backhand.conf" \
+  /etc/systemd/system/pingpong-detect.service.d/a1-backhand.conf
+sudo install -m 0644 "$CAM_OVERLAY/a1-camera-relative-time.service" \
+  /etc/systemd/system/a1-camera-relative-time.service
+sudo systemctl daemon-reload
+sudo systemctl enable a1-camera-relative-time.service
+```
+
+detector 只做 topic remap：原始输出改名为 `/pingpong_location_raw`。sidecar 在
+Jetson 同机计算帧龄，继续转发旧 `/pingpong_location`，并新增
+`/pingpong_location_relative`。确认安全后在 Jetson 执行：
+
+```bash
+sudo systemctl restart pingpong-detect.service a1-camera-relative-time.service
 systemctl status pingpong-detect.service --no-pager -l
-journalctl -u pingpong-detect.service -n 120 --no-pager -o cat \
-  | grep -E '\[FRESH\]|\[GRAPH\]|ZED|ERROR|WARN'
+systemctl status a1-camera-relative-time.service --no-pager -l
+journalctl -u pingpong-detect.service -u a1-camera-relative-time.service \
+  -n 160 --no-pager -o cat \
+  | grep -E 'RELATIVE_CAMERA_TIME|\[FRESH\]|\[GRAPH\]|ZED|ERROR|WARN'
 ```
 
 曝光年龄闭环的含义不是给观测固定减 `80 ms`：节点读取每一帧的 ZED `TIME_REFERENCE::IMAGE` 曝光时间戳，用 Jetson wall clock 计算 source age。年龄超过 `35 ms` 时继续 drain，最多 8 次；仍不新鲜则本帧不进 TensorRT、也不发布。2026-08-01 实测新鲜硬件底噪为 `23.5--27.4 ms`，服务重启后的锁定日志为：
@@ -1682,10 +1715,12 @@ sudo systemctl daemon-reload
 重启仍必须先由现场人员通过手柄退到 DAMPING。重启后核对：
 
 ```bash
-sudo systemctl restart pingpong-detect.service
+sudo systemctl restart pingpong-detect.service a1-camera-relative-time.service
 systemctl status pingpong-detect.service --no-pager -l
-journalctl -u pingpong-detect.service -n 160 --no-pager -o cat \
-  | grep -E 'CAMERA_SETTINGS|\[FRESH\]|\[GRAPH\]|ERROR|WARN'
+systemctl status a1-camera-relative-time.service --no-pager -l
+journalctl -u pingpong-detect.service -u a1-camera-relative-time.service \
+  -n 200 --no-pager -o cat \
+  | grep -E 'CAMERA_SETTINGS|RELATIVE_CAMERA_TIME|\[FRESH\]|\[GRAPH\]|ERROR|WARN'
 for d in /dev/video0 /dev/video1; do
   v4l2-ctl -d "$d" --get-ctrl=exposure,gain
 done
@@ -1743,14 +1778,15 @@ source install/setup.bash
 ros2 launch sim2real_bridge_cpp a1_policy_bridge_cpp.launch.py
 ```
 
-launch 首行必须先出现类似：
+相对时间默认开启，launch 首行应出现：
 
 ```text
-CLOCK_SYNC_OK host=jetson@192.168.1.231 offset_ms=... limits=offset:10.0,...
+Jetson-relative camera timing enabled; absolute clock offset is diagnostic-only
 ```
 
-如果出现 `CLOCK_SYNC_FAIL`，launch 会 fail-closed，后面的三个本机节点均不会
-启动。不要用 `clock_preflight_enabled:=false` 绕过真机相机部署检查。
+ball bridge 启动行还必须包含 `timing=jetson_relative transport=15.0ms`。旧
+`CLOCK_SYNC_OK` 只在显式设置 `relative_camera_timing_enabled:=false` 时强制执行；
+正常相机部署不要切回旧绝对时间模式。
 
 这个 launch 同时固定：
 
@@ -1814,7 +1850,11 @@ export CYCLONEDDS_URI=file:///tmp/cyclonedds_a1_backhand.xml
   --label a1_backhand_v1_29999_age_lock --rate-hz 100
 ```
 
-它会保存相机 source/receive 时间、滤波球状态、`q/dq/effort`、FSM/gate、raw action、低通后 q_des、完整 obs/frame 和各 topic age；每段同时生成 metadata JSON。结束用该终端 `Ctrl-C`，再检查：
+它会保存旧相机 source/receive 时间，以及相对链路的
+`camera_relative_relay_age_ms`、`camera_relative_transport_delay_ms`、
+`camera_relative_total_age_ms`、重建本机 source time；同时保存滤波球状态、
+`q/dq/effort`、FSM/gate、raw action、低通后 q_des、完整 obs/frame 和各 topic
+age。每段同时生成 metadata JSON。结束用该终端 `Ctrl-C`，再检查：
 
 ```bash
 ls -lht /media/woan/84a38787-1d4e-4ba7-892e-d1d90a009a8c/lgy/系统辨识/sim2real/20260801 | head

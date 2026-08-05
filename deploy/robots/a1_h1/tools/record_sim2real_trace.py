@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import rclpy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -77,19 +77,26 @@ def _ordered(values: list[float], names: list[str]) -> list[float]:
 
 
 class Sim2RealTraceRecorder(Node):
-    def __init__(self, csv_path: Path, rate_hz: float) -> None:
+    def __init__(self, csv_path: Path, rate_hz: float, camera_transport_delay_ms: float) -> None:
         super().__init__("a1_sim2real_trace_recorder")
         self.csv_path = csv_path
         self.rate_hz = rate_hz
         self.rows = 0
+        self.camera_transport_delay_ms = camera_transport_delay_ms
         self.latest: dict[str, Latest] = {
             name: Latest()
             for name in [
-                "camera", "joint", "fsm", "gate", "policy_enable", "motor_enable", *ARRAY_TOPICS
+                "camera", "camera_relative", "joint", "fsm", "gate", "policy_enable", "motor_enable", *ARRAY_TOPICS
             ]
         }
 
         self.create_subscription(PoseStamped, "/pingpong_location", self._camera_cb, qos_profile_sensor_data)
+        self.create_subscription(
+            PoseWithCovarianceStamped,
+            "/pingpong_location_relative",
+            self._camera_relative_cb,
+            qos_profile_sensor_data,
+        )
         self.create_subscription(JointState, "/right_joint_states", self._joint_cb, qos_profile_sensor_data)
         self.create_subscription(String, "/a1_tt/fsm_state", lambda m: self._text_cb("fsm", m), 10)
         self.create_subscription(String, "/sim2real/gate", lambda m: self._text_cb("gate", m), 10)
@@ -117,6 +124,14 @@ class Sim2RealTraceRecorder(Node):
             "camera_seq", "camera_recv_epoch_ns", "camera_recv_age_ms", "camera_source_ns",
             "camera_source_age_ms", "camera_frame", "camera_x", "camera_y", "camera_z",
         ]
+        fields += [
+            "camera_relative_seq", "camera_relative_recv_epoch_ns",
+            "camera_relative_recv_age_ms", "camera_relative_relay_age_ms",
+            "camera_relative_transport_delay_ms", "camera_relative_total_age_ms",
+            "camera_relative_source_local_ns", "camera_relative_schema",
+            "camera_relative_frame", "camera_relative_x", "camera_relative_y",
+            "camera_relative_z",
+        ]
         fields += ["ball_seq", "ball_recv_epoch_ns", "ball_recv_age_ms"]
         fields += [f"ball_{name}" for name in ("x", "y", "z", "vx", "vy", "vz")]
         fields += ["joint_seq", "joint_recv_epoch_ns", "joint_recv_age_ms", "joint_source_ns"]
@@ -138,6 +153,20 @@ class Sim2RealTraceRecorder(Node):
                 "source_ns": source_ns,
                 "frame": msg.header.frame_id,
                 "xyz": [msg.pose.position.x, msg.pose.position.y, msg.pose.position.z],
+            }
+        )
+
+    def _camera_relative_cb(self, msg: PoseWithCovarianceStamped) -> None:
+        self.latest["camera_relative"].update(
+            {
+                "relay_age_ms": 1000.0 * msg.pose.covariance[0],
+                "schema": msg.pose.covariance[1],
+                "frame": msg.header.frame_id,
+                "xyz": [
+                    msg.pose.pose.position.x,
+                    msg.pose.pose.position.y,
+                    msg.pose.pose.position.z,
+                ],
             }
         )
 
@@ -183,6 +212,27 @@ class Sim2RealTraceRecorder(Node):
                 camera_frame=cam.value["frame"],
             )
             for key, value in zip(("camera_x", "camera_y", "camera_z"), cam.value["xyz"]):
+                row[key] = value
+
+        cam_relative = self.latest["camera_relative"]
+        self._slot_base(row, "camera_relative", cam_relative, now_ns)
+        if cam_relative.value:
+            relay_age_ms = float(cam_relative.value["relay_age_ms"])
+            total_age_ms = relay_age_ms + self.camera_transport_delay_ms
+            row.update(
+                camera_relative_relay_age_ms=relay_age_ms,
+                camera_relative_transport_delay_ms=self.camera_transport_delay_ms,
+                camera_relative_total_age_ms=total_age_ms,
+                camera_relative_source_local_ns=(
+                    cam_relative.recv_epoch_ns - int(total_age_ms * 1e6)
+                ),
+                camera_relative_schema=cam_relative.value["schema"],
+                camera_relative_frame=cam_relative.value["frame"],
+            )
+            for key, value in zip(
+                ("camera_relative_x", "camera_relative_y", "camera_relative_z"),
+                cam_relative.value["xyz"],
+            ):
                 row[key] = value
 
         ball = self.latest["ball"]
@@ -240,6 +290,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--label", default="a1_backhand_9700")
     parser.add_argument("--rate-hz", type=float, default=100.0)
+    parser.add_argument("--camera-transport-delay-ms", type=float, default=15.0)
     args, ros_args = parser.parse_known_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -251,6 +302,7 @@ def main() -> None:
         "start_local": datetime.now().astimezone().isoformat(),
         "hostname": socket.gethostname(),
         "rate_hz": args.rate_hz,
+        "camera_transport_delay_ms": args.camera_transport_delay_ms,
         "csv": str(csv_path),
         "ros_domain_id": os.environ.get("ROS_DOMAIN_ID", ""),
         "rmw_implementation": os.environ.get("RMW_IMPLEMENTATION", ""),
@@ -260,7 +312,7 @@ def main() -> None:
     metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
 
     rclpy.init(args=ros_args)
-    node = Sim2RealTraceRecorder(csv_path, args.rate_hz)
+    node = Sim2RealTraceRecorder(csv_path, args.rate_hz, args.camera_transport_delay_ms)
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):

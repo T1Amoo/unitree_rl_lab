@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 
@@ -55,7 +56,11 @@ class A1VrpnBallStateBridge : public rclcpp::Node {
 public:
     A1VrpnBallStateBridge() : Node("a1_vrpn_ball_state_bridge") {
         input_topic_ = declare_parameter<std::string>("input_topic", "/vrpn_mocap/U_Tracker0/pose");
+        relative_input_topic_ = declare_parameter<std::string>(
+            "relative_input_topic", "/pingpong_location_relative");
         output_topic_ = declare_parameter<std::string>("output_topic", "/ball/state");
+        relative_timing_enabled_ = declare_parameter<bool>("relative_timing_enabled", false);
+        relative_transport_delay_s_ = declare_parameter<double>("relative_transport_delay_s", 0.015);
         origin_ = vec3Param(*this, "origin_in_training_world", {0.0, 0.0, 0.76});
         const auto quat = quatParam(*this, "rotation_wxyz_to_training", {1.0, 0.0, 0.0, 0.0});
         velocity_lpf_alpha_ = declare_parameter<double>("velocity_lpf_alpha", 0.35);
@@ -96,22 +101,34 @@ public:
         min_source_age_s_ = std::max(-0.02, min_source_age_s_);
         max_source_age_s_ = std::max(min_source_age_s_, max_source_age_s_);
         max_extrapolation_s_ = std::max(0.0, max_extrapolation_s_);
+        relative_transport_delay_s_ = clamp(relative_transport_delay_s_, 0.0, 0.10);
         table_restitution_ = clamp(table_restitution_, 0.0, 1.2);
         diag_every_ = std::max(0, diag_every_);
         setRotation(quat);
 
         pub_ = create_publisher<std_msgs::msg::Float64MultiArray>(output_topic_, 10);
         auto qos = rclcpp::SensorDataQoS().keep_last(50);
-        sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
-            input_topic_, qos,
-            [this](geometry_msgs::msg::PoseStamped::SharedPtr msg) { poseCb(*msg); });
+        if (relative_timing_enabled_) {
+            relative_sub_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+                relative_input_topic_, qos,
+                [this](geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
+                    relativePoseCb(*msg);
+                });
+        } else {
+            sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
+                input_topic_, qos,
+                [this](geometry_msgs::msg::PoseStamped::SharedPtr msg) { poseCb(*msg); });
+        }
 
         RCLCPP_INFO(
             get_logger(),
-            "ready: %s -> %s [x,y,z,vx,vy,vz], origin=%s temporal_filter=%s "
+            "ready: %s -> %s [x,y,z,vx,vy,vz], timing=%s transport=%.1fms "
+            "origin=%s temporal_filter=%s "
             "alpha=%.2f beta=%.2f innovation=%.3fm acquire=%d reacquire=%d "
             "source_age=[%.3f,%.3f]s extrapolate<=%.3fs table_bounce=%s@z=%.3f/e=%.2f",
-            input_topic_.c_str(), output_topic_.c_str(), vecToString(origin_).c_str(),
+            (relative_timing_enabled_ ? relative_input_topic_ : input_topic_).c_str(),
+            output_topic_.c_str(), relative_timing_enabled_ ? "jetson_relative" : "absolute_header",
+            1000.0 * relative_transport_delay_s_, vecToString(origin_).c_str(),
             temporal_filter_enabled_ ? "true" : "false", filter_alpha_, filter_beta_,
             max_innovation_m_, acquire_frames_, reacquire_frames_,
             min_source_age_s_, max_source_age_s_, max_extrapolation_s_,
@@ -374,12 +391,10 @@ private:
         return true;
     }
 
-    void poseCb(const geometry_msgs::msg::PoseStamped& msg) {
-        const auto pos = toTraining(
-            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
-        const double source_t = sampleTimeSec(msg);
-        const double receive_t = now().seconds();
-        const double source_age = receive_t - source_t;
+    void processPose(
+        double x, double y, double z, double source_t, double source_age,
+        const char* timing_mode) {
+        const auto pos = toTraining(x, y, z);
         if (!std::isfinite(source_age)
             || source_age < min_source_age_s_
             || source_age > max_source_age_s_) {
@@ -387,9 +402,9 @@ private:
             RCLCPP_WARN_THROTTLE(
                 get_logger(), *get_clock(), 1000,
                 "drop camera sample with source_age=%.1fms (allowed=[%.1f, %.1f]ms); "
-                "check Jetson/local clock sync and camera freshness",
+                "timing_mode=%s",
                 1000.0 * source_age,
-                1000.0 * min_source_age_s_, 1000.0 * max_source_age_s_);
+                1000.0 * min_source_age_s_, 1000.0 * max_source_age_s_, timing_mode);
             return;
         }
 
@@ -416,16 +431,46 @@ private:
         if (diag_every_ > 0 && n_ % static_cast<size_t>(diag_every_) == 0) {
             RCLCPP_INFO(
                 get_logger(),
-                "ball_state pos=%s vel=%s source_age=%.1fms innovation=%.3fm "
+                "ball_state pos=%s vel=%s source_age=%.1fms timing=%s innovation=%.3fm "
                 "accepted=%zu rejected=%zu pending=%zu stale=%zu",
                 vecToString(publish_pos).c_str(), vecToString(publish_vel).c_str(),
-                1000.0 * source_age, last_innovation_m_, accepted_measurements_,
+                1000.0 * source_age, timing_mode, last_innovation_m_, accepted_measurements_,
                 rejected_measurements_, pending_measurements_, stale_measurements_);
         }
     }
 
+    void poseCb(const geometry_msgs::msg::PoseStamped& msg) {
+        const double receive_t = now().seconds();
+        const double source_t = sampleTimeSec(msg);
+        processPose(
+            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z,
+            source_t, receive_t - source_t, "absolute_header");
+    }
+
+    void relativePoseCb(const geometry_msgs::msg::PoseWithCovarianceStamped& msg) {
+        const double relay_age_s = msg.pose.covariance[0];
+        const double schema_version = msg.pose.covariance[1];
+        if (!std::isfinite(relay_age_s) || std::abs(schema_version - 1.0) > 1e-9) {
+            ++stale_measurements_;
+            RCLCPP_WARN_THROTTLE(
+                get_logger(), *get_clock(), 1000,
+                "drop invalid relative camera timing: relay_age=%.1fms schema=%.3f",
+                1000.0 * relay_age_s, schema_version);
+            return;
+        }
+        const double receive_t = now().seconds();
+        const double source_age = relay_age_s + relative_transport_delay_s_;
+        const double source_t = receive_t - source_age;
+        processPose(
+            msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z,
+            source_t, source_age, "jetson_relative");
+    }
+
     std::string input_topic_;
+    std::string relative_input_topic_;
     std::string output_topic_;
+    bool relative_timing_enabled_ = false;
+    double relative_transport_delay_s_ = 0.015;
     std::array<double, 3> origin_{0.0, 0.0, 0.76};
     double rot_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
     double velocity_lpf_alpha_ = 0.35;
@@ -453,6 +498,7 @@ private:
 
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr relative_sub_;
 
     bool last_pos_valid_ = false;
     std::array<double, 3> last_pos_{0.0, 0.0, 0.0};
