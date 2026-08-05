@@ -1,0 +1,19 @@
+deploy/robots/a1_h1/jetson_camera/a1-camera-relative-time.service
+  s_d7bdfbc037e805::t_c8516e60e76235 9-13,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "feffb17fbb2e693f14402c6bb03de807afc77d2a",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
