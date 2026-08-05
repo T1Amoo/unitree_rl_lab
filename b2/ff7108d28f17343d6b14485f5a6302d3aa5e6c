@@ -1,0 +1,35 @@
+deploy/robots/a1_h1/launch/a1_policy_bridge_cpp.launch.py
+  s_d7bdfbc037e805::t_7cf7866c434d88 34-39,84-86,118-120,186-192
+deploy/robots/a1_h1/jetson_camera/relative_camera_time_relay.py
+  s_d7bdfbc037e805::t_5b5f436ff183dc 20,106
+  s_d7bdfbc037e805::t_7cf7866c434d88 1-19,21-105,107-115
+deploy/robots/a1_h1/jetson_camera/pingpong-detect-a1-backhand.conf
+  s_d7bdfbc037e805::t_7cf7866c434d88 5
+deploy/robots/a1_h1/jetson_camera/a1-camera-relative-time.service
+  s_d7bdfbc037e805::t_7cf7866c434d88 1-14
+deploy/robots/a1_h1/tools/record_sim2real_trace.py
+  s_d7bdfbc037e805::t_7cf7866c434d88 17,80,85,89,94-99,127-134,159-172,217-237,293,305,315
+deploy/robots/a1_h1/src/a1_vrpn_ball_state_bridge.cpp
+  s_d7bdfbc037e805::t_7cf7866c434d88 11,59-60,62-63,104,111-121,125-126,129-131,394-397,405,407,434,437,442-468,470,472-473,501
+deploy/robots/a1_h1/jetson_camera/README.md
+  s_d7bdfbc037e805::t_8123310161216a 18,30-48,65-79
+  s_d7bdfbc037e805::t_2ba3b07b0cfe66 80
+deploy/robots/a1_h1/MANUAL.md
+  s_d7bdfbc037e805::t_8123310161216a 1493,1495-1497,1499-1521,1535,1541,1557-1561,1656-1670,1673,1675-1678,1718,1720-1723,1781,1784,1787-1789,1853-1857
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b2ff7108d28f17343d6b14485f5a6302d3aa5e6c",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
