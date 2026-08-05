@@ -577,7 +577,6 @@ private:
             enterPassive("fixstand_no_joint_state");
             return;
         }
-        const bool was_damping = state_ == FsmState::Damping;
         state_ = FsmState::FixStand;
         last_reason_ = reason;
         fixstand_cmd_q_ = clampQ(q_.value(), q_min_, q_max_);
@@ -587,7 +586,12 @@ private:
         fixstand_start_time_.reset();
         fixstand_movej_sent_ = false;
         test_start_time_.reset();
-        startDampingExitGuard(was_damping);
+        // The bottom controller's damping latch outlives this supervisor.
+        // After a local FSM restart our state starts at PASSIVE even when the
+        // robot is still damped.  Always publish damping=false first and wait
+        // before MoveJ; otherwise armcontrol drops the only MoveJ command as
+        // "damping active" and the arm never leaves its current pose.
+        startDampingExitGuard(true);
         publishDamping(false, true);
         publishPolicyEnable(false, true);
         if (fixstand_use_movej_) {
