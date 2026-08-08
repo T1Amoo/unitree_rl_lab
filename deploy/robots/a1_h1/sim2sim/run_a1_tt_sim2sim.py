@@ -731,9 +731,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--serve-interval", type=int, default=250, help="Serve period in 50Hz control steps.")
     ap.add_argument(
         "--serve-profile",
-        choices=["trained_v1", "generalized"],
-        default="trained_v1",
-        help="Serve range (default: the regular trained_v1 range; generalized is the explicit high/slow probe).",
+        choices=["trained_v1", "trained_v6", "v6_generalized", "generalized"],
+        default="v6_generalized",
+        help=(
+            "Serve range (default: seven coverage-balanced strata inside the v6 "
+            "net/bounce/hit-plane contract; trained_v6 preserves the natural "
+            "training mixture, trained_v1 is historical, and generalized is "
+            "the legacy extreme probe)."
+        ),
     )
     ap.add_argument("--no-serve", action="store_true", help="Keep the ball parked and never start serves.")
     ap.add_argument(

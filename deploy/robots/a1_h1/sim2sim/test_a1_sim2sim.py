@@ -37,8 +37,14 @@ from serve import (
     NET_CENTER_CLEARANCE_Z,
     SERVE_Y_CENTER,
     SERVE_Y_HALF,
+    V6_GENERALIZED_STRATA,
+    V6_HIT_ABS_VX,
+    V6_HIT_Y,
+    V6_HIT_Z,
+    V6_PHYSICAL_BOUNCE_X,
     Serve,
     first_flight_metrics,
+    v6_contract_metrics,
 )
 
 
@@ -139,7 +145,7 @@ def test_real_response_model_smooths_limited_qdes_step():
 
 
 def test_serve_bounce_sampler_ranges():
-    s = Serve(rng=np.random.default_rng(0))
+    s = Serve(rng=np.random.default_rng(0), profile="trained_v1")
     for _ in range(200):
         pos, vel = s.sample()
         assert np.allclose(pos, [1.35, 0.0, 1.03])
@@ -151,6 +157,65 @@ def test_serve_bounce_sampler_ranges():
         y_b = vel[1] * t_b
         assert BOUNCE_X[0] <= x_b <= BOUNCE_X[1]
         assert SERVE_Y_CENTER - SERVE_Y_HALF <= y_b <= SERVE_Y_CENTER + SERVE_Y_HALF
+
+
+def test_trained_v6_serve_matches_contract_and_spans_multiple_ball_types():
+    serve = Serve(rng=np.random.default_rng(20260808), profile="trained_v6")
+    metrics = []
+    for _ in range(1024):
+        _, vel = serve.sample()
+        sample_metrics = v6_contract_metrics(vel)
+        assert sample_metrics is not None
+        assert sample_metrics["net_z"] >= NET_CENTER_CLEARANCE_Z
+        assert V6_PHYSICAL_BOUNCE_X[0] <= sample_metrics["bounce_x"] <= V6_PHYSICAL_BOUNCE_X[1]
+        assert V6_HIT_Y[0] <= sample_metrics["hit_y"] <= V6_HIT_Y[1]
+        assert V6_HIT_Z[0] <= sample_metrics["hit_z"] <= V6_HIT_Z[1]
+        assert V6_HIT_ABS_VX[0] <= abs(sample_metrics["hit_vx"]) <= V6_HIT_ABS_VX[1]
+        metrics.append(sample_metrics)
+
+    hit_y = np.asarray([m["hit_y"] for m in metrics])
+    hit_z = np.asarray([m["hit_z"] for m in metrics])
+    hit_abs_vx = np.abs([m["hit_vx"] for m in metrics])
+    # Protect the visual probe from regressing to one narrow center/height/speed cluster.
+    assert np.quantile(hit_y, 0.95) - np.quantile(hit_y, 0.05) > 0.20
+    assert np.quantile(hit_z, 0.95) - np.quantile(hit_z, 0.05) > 0.12
+    assert np.quantile(hit_abs_vx, 0.95) - np.quantile(hit_abs_vx, 0.05) > 1.50
+
+
+def test_v6_generalized_profile_preserves_contract_and_stratified_coverage():
+    serve = Serve(rng=np.random.default_rng(20260808), profile="v6_generalized")
+    counts = {str(stratum["name"]): 0 for stratum in V6_GENERALIZED_STRATA}
+    attempts = []
+    height_counts = {"low": 0, "mid": 0, "high": 0}
+    speed_counts = {"slow": 0, "medium": 0, "fast": 0}
+    sample_count = 4096
+    for _ in range(sample_count):
+        _, vel = serve.sample()
+        sample_metrics = v6_contract_metrics(vel)
+        assert sample_metrics is not None
+        assert sample_metrics["net_z"] >= NET_CENTER_CLEARANCE_Z
+        assert V6_PHYSICAL_BOUNCE_X[0] <= sample_metrics["bounce_x"] <= V6_PHYSICAL_BOUNCE_X[1]
+        assert V6_HIT_Y[0] <= sample_metrics["hit_y"] <= V6_HIT_Y[1]
+        assert V6_HIT_Z[0] <= sample_metrics["hit_z"] <= V6_HIT_Z[1]
+        assert V6_HIT_ABS_VX[0] <= abs(sample_metrics["hit_vx"]) <= V6_HIT_ABS_VX[1]
+        counts[serve.last_stratum] += 1
+        attempts.append(serve.last_attempts)
+        hit_z = sample_metrics["hit_z"]
+        hit_abs_vx = abs(sample_metrics["hit_vx"])
+        height_counts["low" if hit_z < 1.0 else "mid" if hit_z < 1.16 else "high"] += 1
+        speed_counts[
+            "slow" if hit_abs_vx < 1.8 else "medium" if hit_abs_vx < 3.2 else "fast"
+        ] += 1
+
+    for stratum in V6_GENERALIZED_STRATA:
+        actual = counts[str(stratum["name"])] / sample_count
+        assert abs(actual - float(stratum["weight"])) < 0.025
+    assert np.mean(attempts) < 1.7
+    assert np.quantile(attempts, 0.95) <= 3
+    for actual, target in zip(height_counts.values(), (0.10, 0.72, 0.18)):
+        assert abs(actual / sample_count - target) < 0.03
+    for actual, target in zip(speed_counts.values(), (0.15, 0.65, 0.20)):
+        assert abs(actual / sample_count - target) < 0.03
 
 
 def test_generalized_serve_clears_net_and_bounces_on_robot_side():
@@ -188,7 +253,7 @@ def test_invalid_ball_observation_uses_home_sentinel():
 
 def test_short_headless_rollout_without_policy():
     args = parse_args([])
-    assert args.serve_profile == "generalized"
+    assert args.serve_profile == "v6_generalized"
     args.headless_steps = 5
     args.no_policy = True
     stats = run(args)

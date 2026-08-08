@@ -48,15 +48,21 @@ Viewer:
 conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py
 ```
 
-The default is the fixed generalized range: all samples clear the net and
-first-bounce on the robot side, with wider depth/y/height/speed coverage than
-the frozen v1 training set:
+The default is a seven-stratum coverage view inside the backhand-v6 support:
+low/mid/high arrival and slow/medium/fast arrival-speed groups are explicitly
+represented.  Every candidate is propagated through the training
+drag/table-bounce model and rejected unless it clears the net, first-bounces on
+the robot side, and reaches both the selected stratum and the global v6
+hit-plane y/z/speed window.  This keeps rare slow/high/low balls visible without
+admitting out-of-training-distribution launches:
 
 ```bash
 conda run -n g1tt_sim2sim python sim2sim/run_a1_tt_sim2sim.py
 ```
 
-Use `--serve-profile trained_v1` only for historical narrow-range replay.
+Use `--serve-profile trained_v6` for the natural training mixture,
+`--serve-profile trained_v1` for historical narrow-range replay, or
+`--serve-profile generalized` for the legacy extreme high/slow stress probe.
 
 Explicit torque diagnostic:
 
