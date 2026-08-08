@@ -1,0 +1,30 @@
+deploy/robots/a1_h1/sim2sim/test_a1_sim2sim.py
+  s_d7bdfbc037e805::t_4a3f9f16822f95 41-44,47,148,162-184
+  s_d7bdfbc037e805::t_ef1ccbbb595773 40,185-220,256
+deploy/robots/a1_h1/sim2sim/serve.py
+  s_d7bdfbc037e805::t_822201fcd72301 59-123,295,299-304,307-308,314-315,327-328,331-349,382-386,389-390,394-422,426,447-448
+  s_d7bdfbc037e805::t_38f6bb08c0c3c2 1-6,20,32-58,135-261,316-317,350-381,387-388,391-393,423
+  s_d7bdfbc037e805::t_63e97f75711f7c 424
+deploy/robots/a1_h1/sim2sim/README.md
+  s_d7bdfbc037e805::t_0f13c718f39902 65
+  s_d7bdfbc037e805::t_5a663d89e22c03 51-57,63-64
+deploy/robots/a1_h1/sim2sim/run_a1_tt_sim2sim.py
+  s_d7bdfbc037e805::t_39edebcdca9ed9 736,741
+  s_d7bdfbc037e805::t_d5fde3bc937b24 734-735,737-740
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "199acbb202bb87dab1ce429cbae54f43250ad380",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
