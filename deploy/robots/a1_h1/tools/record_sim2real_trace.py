@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import re
@@ -18,7 +19,7 @@ from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import BatteryState, JointState
 from std_msgs.msg import Bool, Float64MultiArray, String
 
 
@@ -76,8 +77,38 @@ def _ordered(values: list[float], names: list[str]) -> list[float]:
     return out
 
 
+def _file_identity(path_text: str) -> dict[str, object]:
+    """Return a reproducible deployment-artifact identity without requiring it."""
+    if not path_text:
+        return {"path": "", "available": False, "reason": "not_provided"}
+    path = Path(path_text).expanduser().resolve()
+    identity: dict[str, object] = {"path": str(path), "available": path.is_file()}
+    if not path.is_file():
+        identity["reason"] = "not_a_readable_file"
+        return identity
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    stat = path.stat()
+    identity.update(
+        sha256=digest.hexdigest(),
+        size_bytes=stat.st_size,
+        mtime_epoch_ns=stat.st_mtime_ns,
+    )
+    return identity
+
+
 class Sim2RealTraceRecorder(Node):
-    def __init__(self, csv_path: Path, rate_hz: float, camera_transport_delay_ms: float) -> None:
+    def __init__(
+        self,
+        csv_path: Path,
+        rate_hz: float,
+        camera_transport_delay_ms: float,
+        battery_topic: str,
+        motor_temperature_topic: str,
+        motor_bus_voltage_topic: str,
+    ) -> None:
         super().__init__("a1_sim2real_trace_recorder")
         self.csv_path = csv_path
         self.rate_hz = rate_hz
@@ -86,18 +117,50 @@ class Sim2RealTraceRecorder(Node):
         self.latest: dict[str, Latest] = {
             name: Latest()
             for name in [
-                "camera", "camera_relative", "joint", "fsm", "gate", "policy_enable", "motor_enable", *ARRAY_TOPICS
+                "camera", "camera_raw", "camera_relative", "camera_pose_world",
+                "joint", "battery", "motor_temperature", "motor_bus_voltage",
+                "fsm", "gate", "policy_enable", "motor_enable", *ARRAY_TOPICS
             ]
         }
 
         self.create_subscription(PoseStamped, "/pingpong_location", self._camera_cb, qos_profile_sensor_data)
+        self.create_subscription(
+            PoseStamped,
+            "/pingpong_location_raw",
+            lambda msg: self._pose_cb("camera_raw", msg),
+            qos_profile_sensor_data,
+        )
         self.create_subscription(
             PoseWithCovarianceStamped,
             "/pingpong_location_relative",
             self._camera_relative_cb,
             qos_profile_sensor_data,
         )
+        self.create_subscription(
+            PoseStamped,
+            "/camera_pose_world",
+            lambda msg: self._pose_cb("camera_pose_world", msg),
+            qos_profile_sensor_data,
+        )
         self.create_subscription(JointState, "/right_joint_states", self._joint_cb, qos_profile_sensor_data)
+        if battery_topic:
+            self.create_subscription(
+                BatteryState, battery_topic, self._battery_cb, qos_profile_sensor_data
+            )
+        if motor_temperature_topic:
+            self.create_subscription(
+                Float64MultiArray,
+                motor_temperature_topic,
+                lambda msg: self._array_cb("motor_temperature", msg),
+                qos_profile_sensor_data,
+            )
+        if motor_bus_voltage_topic:
+            self.create_subscription(
+                Float64MultiArray,
+                motor_bus_voltage_topic,
+                lambda msg: self._array_cb("motor_bus_voltage", msg),
+                qos_profile_sensor_data,
+            )
         self.create_subscription(String, "/a1_tt/fsm_state", lambda m: self._text_cb("fsm", m), 10)
         self.create_subscription(String, "/sim2real/gate", lambda m: self._text_cb("gate", m), 10)
         self.create_subscription(Bool, "/a1_tt/policy_enable", lambda m: self._bool_cb("policy_enable", m), 10)
@@ -144,15 +207,65 @@ class Sim2RealTraceRecorder(Node):
         for name, (_, width) in ARRAY_TOPICS.items():
             fields += [f"{name}_seq", f"{name}_recv_epoch_ns", f"{name}_recv_age_ms"]
             fields += [f"{name}_{i}" for i in range(width)]
+        # Append-only telemetry extension: keep every historical column in the
+        # same order so existing name- and position-based analysis keeps working.
+        for name in ("camera_raw", "camera_pose_world"):
+            fields += [
+                f"{name}_seq", f"{name}_recv_epoch_ns", f"{name}_recv_age_ms",
+                f"{name}_source_ns", f"{name}_source_age_ms", f"{name}_frame",
+                f"{name}_x", f"{name}_y", f"{name}_z",
+            ]
+        fields += [
+            "battery_seq", "battery_recv_epoch_ns", "battery_recv_age_ms",
+            "battery_source_ns", "battery_source_age_ms", "battery_available",
+            "battery_voltage_v", "battery_temperature_c", "battery_current_a",
+            "battery_charge_ah", "battery_capacity_ah", "battery_design_capacity_ah",
+            "battery_percentage", "battery_power_supply_status",
+            "battery_power_supply_health", "battery_power_supply_technology",
+            "battery_present", "battery_cell_voltage_json",
+            "battery_cell_temperature_json", "battery_location", "battery_serial_number",
+        ]
+        for name in ("motor_temperature", "motor_bus_voltage"):
+            fields += [
+                f"{name}_seq", f"{name}_recv_epoch_ns", f"{name}_recv_age_ms",
+                f"{name}_available",
+            ]
+            fields += [f"{name}_{i}" for i in range(1, 8)]
         return fields
 
     def _camera_cb(self, msg: PoseStamped) -> None:
+        self._pose_cb("camera", msg)
+
+    def _pose_cb(self, name: str, msg: PoseStamped) -> None:
         source_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
-        self.latest["camera"].update(
+        self.latest[name].update(
             {
                 "source_ns": source_ns,
                 "frame": msg.header.frame_id,
                 "xyz": [msg.pose.position.x, msg.pose.position.y, msg.pose.position.z],
+            }
+        )
+
+    def _battery_cb(self, msg: BatteryState) -> None:
+        source_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
+        self.latest["battery"].update(
+            {
+                "source_ns": source_ns,
+                "voltage": msg.voltage,
+                "temperature": msg.temperature,
+                "current": msg.current,
+                "charge": msg.charge,
+                "capacity": msg.capacity,
+                "design_capacity": msg.design_capacity,
+                "percentage": msg.percentage,
+                "power_supply_status": msg.power_supply_status,
+                "power_supply_health": msg.power_supply_health,
+                "power_supply_technology": msg.power_supply_technology,
+                "present": int(msg.present),
+                "cell_voltage": list(msg.cell_voltage),
+                "cell_temperature": list(msg.cell_temperature),
+                "location": msg.location,
+                "serial_number": msg.serial_number,
             }
         )
 
@@ -274,6 +387,56 @@ class Sim2RealTraceRecorder(Node):
             for i, value in enumerate(slot.value.get("data", [])[:width]):
                 row[f"{name}_{i}"] = value
 
+        for name in ("camera_raw", "camera_pose_world"):
+            slot = self.latest[name]
+            self._slot_base(row, name, slot, now_ns)
+            if slot.value:
+                source_ns = int(slot.value["source_ns"])
+                row.update(
+                    {
+                        f"{name}_source_ns": source_ns,
+                        f"{name}_source_age_ms": (
+                            (now_ns - source_ns) / 1e6 if source_ns else ""
+                        ),
+                        f"{name}_frame": slot.value["frame"],
+                    }
+                )
+                for axis, value in zip(("x", "y", "z"), slot.value["xyz"]):
+                    row[f"{name}_{axis}"] = value
+
+        battery = self.latest["battery"]
+        self._slot_base(row, "battery", battery, now_ns)
+        row["battery_available"] = int(battery.seq > 0)
+        if battery.value:
+            source_ns = int(battery.value["source_ns"])
+            row.update(
+                battery_source_ns=source_ns,
+                battery_source_age_ms=(now_ns - source_ns) / 1e6 if source_ns else "",
+                battery_voltage_v=battery.value["voltage"],
+                battery_temperature_c=battery.value["temperature"],
+                battery_current_a=battery.value["current"],
+                battery_charge_ah=battery.value["charge"],
+                battery_capacity_ah=battery.value["capacity"],
+                battery_design_capacity_ah=battery.value["design_capacity"],
+                battery_percentage=battery.value["percentage"],
+                battery_power_supply_status=battery.value["power_supply_status"],
+                battery_power_supply_health=battery.value["power_supply_health"],
+                battery_power_supply_technology=battery.value["power_supply_technology"],
+                battery_present=battery.value["present"],
+                battery_cell_voltage_json=json.dumps(battery.value["cell_voltage"]),
+                battery_cell_temperature_json=json.dumps(battery.value["cell_temperature"]),
+                battery_location=battery.value["location"],
+                battery_serial_number=battery.value["serial_number"],
+            )
+
+        for name in ("motor_temperature", "motor_bus_voltage"):
+            slot = self.latest[name]
+            self._slot_base(row, name, slot, now_ns)
+            values = slot.value.get("data", [])[:7]
+            row[f"{name}_available"] = int(len(values) == 7)
+            for i, value in enumerate(values, 1):
+                row[f"{name}_{i}"] = value
+
         self.writer.writerow(row)
         self.rows += 1
         if self.rows % 100 == 0:
@@ -291,6 +454,19 @@ def main() -> None:
     parser.add_argument("--label", default="a1_backhand_9700")
     parser.add_argument("--rate-hz", type=float, default=100.0)
     parser.add_argument("--camera-transport-delay-ms", type=float, default=15.0)
+    parser.add_argument("--battery-topic", default="/battery/state")
+    parser.add_argument(
+        "--motor-temperature-topic",
+        default="",
+        help="Optional Float64MultiArray topic ordered r1..r7; blank means unavailable",
+    )
+    parser.add_argument(
+        "--motor-bus-voltage-topic",
+        default="",
+        help="Optional Float64MultiArray topic ordered r1..r7; blank means unavailable",
+    )
+    parser.add_argument("--policy-path", default="")
+    parser.add_argument("--predictor-path", default="")
     args, ros_args = parser.parse_known_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -308,11 +484,44 @@ def main() -> None:
         "rmw_implementation": os.environ.get("RMW_IMPLEMENTATION", ""),
         "cyclonedds_uri": os.environ.get("CYCLONEDDS_URI", ""),
         "topics": {name: topic for name, (topic, _) in ARRAY_TOPICS.items()},
+        "passive_topics": {
+            "camera_raw": "/pingpong_location_raw",
+            "camera_relative": "/pingpong_location_relative",
+            "camera_pose_world": "/camera_pose_world",
+            "battery": args.battery_topic,
+            "motor_temperature": args.motor_temperature_topic,
+            "motor_bus_voltage": args.motor_bus_voltage_topic,
+        },
+        "deployment_artifacts": {
+            "policy": _file_identity(args.policy_path),
+            "predictor": _file_identity(args.predictor_path),
+        },
+        "telemetry_contract": {
+            "right_joint_states": "q/dq/effort only",
+            "battery_state": "pack telemetry only; not per-motor VBUS or temperature",
+            "per_motor_temperature": (
+                "optional Float64MultiArray r1..r7" if args.motor_temperature_topic else "unavailable"
+            ),
+            "per_motor_bus_voltage": (
+                "optional Float64MultiArray r1..r7" if args.motor_bus_voltage_topic else "unavailable"
+            ),
+            "landing": (
+                "no online inferred label; preserve raw/relative 3D camera tracks for offline "
+                "post-contact and landing classification"
+            ),
+        },
     }
     metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
 
     rclpy.init(args=ros_args)
-    node = Sim2RealTraceRecorder(csv_path, args.rate_hz, args.camera_transport_delay_ms)
+    node = Sim2RealTraceRecorder(
+        csv_path,
+        args.rate_hz,
+        args.camera_transport_delay_ms,
+        args.battery_topic,
+        args.motor_temperature_topic,
+        args.motor_bus_voltage_topic,
+    )
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
@@ -329,6 +538,19 @@ def main() -> None:
             end_epoch_ns=time.time_ns(),
             end_local=datetime.now().astimezone().isoformat(),
             rows=node.rows,
+            topic_message_counts={name: slot.seq for name, slot in node.latest.items()},
+            telemetry_availability={
+                "battery_state": node.latest["battery"].seq > 0,
+                "motor_temperature_r1_r7": (
+                    len(node.latest["motor_temperature"].value.get("data", [])) >= 7
+                ),
+                "motor_bus_voltage_r1_r7": (
+                    len(node.latest["motor_bus_voltage"].value.get("data", [])) >= 7
+                ),
+                "camera_raw": node.latest["camera_raw"].seq > 0,
+                "camera_relative": node.latest["camera_relative"].seq > 0,
+                "camera_pose_world": node.latest["camera_pose_world"].seq > 0,
+            },
         )
         metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
         node.destroy_node()
