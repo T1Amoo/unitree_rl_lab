@@ -1,0 +1,18 @@
+[Unit]
+Description=A1 startup-only camera pose snapshot
+Before=pingpong-detect.service
+
+[Service]
+Type=oneshot
+User=jetson
+Environment="HOME=/home/jetson"
+Environment="ROS_DOMAIN_ID=0"
+Environment="RMW_IMPLEMENTATION=rmw_cyclonedds_cpp"
+Environment="CYCLONEDDS_URI=file:///home/jetson/cyclonedds_eth.xml"
+# The probe writes valid=false on every handled failure and exits successfully,
+# so camera-pose loss never prevents the production ball detector from starting.
+# A leading '-' also keeps a packaging/runtime failure from blocking production.
+ExecStart=-/bin/bash -lc 'source /opt/ros/humble/setup.bash && source /home/jetson/pingpong/ros2_ws/install/setup.bash && export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/cuda-12.6/lib64:$$LD_LIBRARY_PATH && exec /usr/bin/python3 /home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera/capture_camera_pose_startup.py --cache-path /home/jetson/.cache/a1_camera/camera_pose_world_startup.json --config-path /home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera/detect_config_a1_backhand.yaml --pose-topic /a1_camera_startup_probe/camera_pose_world --ball-topic /a1_camera_startup_probe/pingpong_location --sample-count 30 --min-samples 20 --max-pose-age-s 0.120 --post-exposure-discard-frames 5 --exposure-script /home/jetson/unitree_rl_lab_lgy/deploy/robots/a1_h1/jetson_camera/configure_zed_exposure.sh --exposure-us 6000 --gain-raw 1601 --timeout-s 35 --release-wait-s 1'
+
+[Install]
+WantedBy=multi-user.target
