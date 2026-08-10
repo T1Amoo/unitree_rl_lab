@@ -1,0 +1,19 @@
+deploy/robots/a1_h1/tools/record_sim2real_trace.py
+  s_d7bdfbc037e805::t_cba5d5e129f286 8,22,80-101,103-111,120-122,127-132,139-144,146-163,210-233,237-239,241,249-271,390-439,457-469,487-512,517-524,541-553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d70de9fad3f65fa344fd0e1bc43d4b9c74e1749b",
+  "prompts": {},
+  "sessions": {
+    "s_d7bdfbc037e805": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb780-0fbb-7d70-ad81-7f6b5c3684bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
