@@ -19,13 +19,17 @@ training code from the source repository are intentionally not included.
 
 ## License status
 
-The source repository's `setup.py` declares `BSD-3-Clause` for its Python
-package, but source commit `e80f82d` does not contain a `LICENSE`, `COPYING`, or
-asset-specific license file, and GitHub reports no detected repository license.
-Consequently, the redistribution terms for these URDF/STL assets are not yet
-documented clearly enough to treat them as covered by this repository's
-Apache-2.0 license.
+The legal rights holder confirmed on 2026-08-24 that the one URDF and 21 STL
+files listed in `SHA256SUMS` are released under the Apache License, Version 2.0
+(`Apache-2.0`). See [`ASSET_LICENSE.md`](ASSET_LICENSE.md) for the exact scope
+and the repository-root [`LICENCE`](../../../../../../LICENCE) for the full
+license terms.
 
-Keep this provenance note with the assets. Before publishing or redistributing
-them, obtain an explicit asset-license confirmation from the rights holder and
-update this section with the exact license and attribution requirements.
+The source repository's `setup.py` declares `BSD-3-Clause` for its Python
+package, but source commit `e80f82d` does not contain a root or asset-specific
+license file. That historical metadata is retained here as provenance; the
+asset-specific Apache-2.0 grant above records the rights holder's explicit
+authorization for this vendored asset set.
+
+Keep this provenance note, `ASSET_LICENSE.md`, and `SHA256SUMS` with the assets
+when redistributing them.

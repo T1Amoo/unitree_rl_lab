@@ -101,9 +101,9 @@ formal baseline uses 4096 environments and the default runner iterations. See
 [`docs/WOAN4310_LOCOMOTION.md`](docs/WOAN4310_LOCOMOTION.md) for the task design,
 reward baseline, and tuning checkpoints.
 
-The source repository does not contain a complete asset-license file. Review
-the bundled [asset provenance note](source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/README.md)
-before publishing or redistributing the URDF/STL files.
+The rights holder releases the bundled WOAN4310 URDF/STL files under
+Apache-2.0. See the asset-local [license declaration](source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/ASSET_LICENSE.md)
+and [provenance note](source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/README.md).
 
 ## Deploy
 
