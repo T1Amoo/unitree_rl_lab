@@ -1,0 +1,26 @@
+source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/README.md
+  s_b36aaddc63e62e::t_ae4afc4871b3f5 22-24,26-27,29-35
+  s_b36aaddc63e62e::t_331196fba842c7 25
+README.md
+  s_b36aaddc63e62e::t_ae4afc4871b3f5 104-106
+source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/ASSET_LICENSE.md
+  s_b36aaddc63e62e::t_b6934c16c4645e 16-18
+  s_b36aaddc63e62e::t_ae4afc4871b3f5 1-12,14-15
+  s_b36aaddc63e62e::t_331196fba842c7 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "2ffc07a220641af66c6dff76b93eefda79cfed05",
+  "prompts": {},
+  "sessions": {
+    "s_b36aaddc63e62e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a032a4-29ea-7832-a2f9-e6b9fb6115bb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
