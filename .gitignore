@@ -71,5 +71,10 @@ datasets
 *.STL
 **/env.yaml
 
+# Bundled WOAN4310 robot-description meshes are source assets, not deploy outputs.
+!source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/
+!source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/meshes/
+!source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/meshes/*.STL
+
 # Mimic
 *.npz

@@ -85,6 +85,26 @@ Currently supports Unitree **Go2**, **H1** and **G1-29dof** robots.
     python scripts/rsl_rl/play.py --task Unitree-G1-29dof-Velocity
     ```
 
+## WOAN4310 quadruped locomotion
+
+This branch includes a repository-local WOAN4310 (`dog_V2`) URDF asset and a
+velocity-tracking locomotion task:
+
+```bash
+./unitree_rl_lab.sh -l
+python scripts/rsl_rl/train.py --headless --task Unitree-WOAN4310-Velocity --num_envs 16 --max_iterations 1
+python scripts/rsl_rl/play.py --task Unitree-WOAN4310-Velocity
+```
+
+The 16-environment, one-iteration command is an environment smoke test. The
+formal baseline uses 4096 environments and the default runner iterations. See
+[`docs/WOAN4310_LOCOMOTION.md`](docs/WOAN4310_LOCOMOTION.md) for the task design,
+reward baseline, and tuning checkpoints.
+
+The source repository does not contain a complete asset-license file. Review
+the bundled [asset provenance note](source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/README.md)
+before publishing or redistributing the URDF/STL files.
+
 ## Deploy
 
 After the model training is completed, we need to perform sim2sim on the trained strategy in Mujoco to test the performance of the model.
