@@ -5,7 +5,10 @@ from pathlib import Path
 from isaaclab.actuators import IdealPDActuatorCfg
 from isaaclab.assets.articulation import ArticulationCfg
 
-from unitree_rl_lab.assets.robots.unitree import UnitreeArticulationCfg, UnitreeUrdfFileCfg
+from unitree_rl_lab.assets.robots.unitree import (
+    UnitreeArticulationCfg,
+    UnitreeUrdfFileCfg,
+)
 
 WOAN4310_DESCRIPTION_DIR = Path(__file__).resolve().parent / "woan4310_description"
 WOAN4310_URDF_PATH = WOAN4310_DESCRIPTION_DIR / "urdf" / "dog_V2.urdf"
@@ -37,7 +40,10 @@ WOAN4310_CFG = UnitreeArticulationCfg(
         self_collision=True,
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.42),
+        # The nominal feet have a 0.267 m center height and a 0.02 m sphere
+        # radius.  A 0.30 m base height starts just above contact without the
+        # 0.13 m reset drop produced by the source task's 0.42 m value.
+        pos=(0.0, 0.0, 0.30),
         joint_pos={
             "joint_.*2": 0.0,
             "joint_.*3": 0.8,

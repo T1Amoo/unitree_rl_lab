@@ -105,7 +105,9 @@ class RobotSceneCfg(InteractiveSceneCfg):
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
-    contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
+    contact_forces = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True
+    )
     # lights
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
@@ -130,6 +132,7 @@ class EventCfg:
             "dynamic_friction_range": (0.3, 1.2),
             "restitution_range": (0.0, 0.15),
             "num_buckets": 64,
+            "make_consistent": True,
         },
     )
 
@@ -138,7 +141,7 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-1.0, 3.0),
+            "mass_distribution_params": (-1.0, 1.0),
             "operation": "add",
         },
     )
@@ -198,7 +201,7 @@ class CommandsCfg:
         rel_standing_envs=0.1,
         debug_vis=True,
         ranges=mdp.UniformLevelVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.1, 0.1), lin_vel_y=(-0.1, 0.1), ang_vel_z=(-1, 1)
+            lin_vel_x=(-0.1, 0.1), lin_vel_y=(-0.1, 0.1), ang_vel_z=(-0.1, 0.1)
         ),
         limit_ranges=mdp.UniformLevelVelocityCommandCfg.Ranges(
             lin_vel_x=(-1.0, 1.0), lin_vel_y=(-0.4, 0.4), ang_vel_z=(-1.0, 1.0)
@@ -228,14 +231,32 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=0.2, clip=(-100, 100), noise=Unoise(n_min=-0.2, n_max=0.2))
-        projected_gravity = ObsTerm(func=mdp.projected_gravity, clip=(-100, 100), noise=Unoise(n_min=-0.05, n_max=0.05))
-        velocity_commands = ObsTerm(
-            func=mdp.generated_commands, clip=(-100, 100), params={"command_name": "base_velocity"}
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel,
+            scale=0.2,
+            clip=(-100, 100),
+            noise=Unoise(n_min=-0.2, n_max=0.2),
         )
-        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, clip=(-100, 100), noise=Unoise(n_min=-0.01, n_max=0.01))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            clip=(-100, 100),
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands,
+            clip=(-100, 100),
+            params={"command_name": "base_velocity"},
+        )
+        joint_pos_rel = ObsTerm(
+            func=mdp.joint_pos_rel,
+            clip=(-100, 100),
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+        )
         joint_vel_rel = ObsTerm(
-            func=mdp.joint_vel_rel, scale=0.05, clip=(-100, 100), noise=Unoise(n_min=-1.5, n_max=1.5)
+            func=mdp.joint_vel_rel,
+            scale=0.05,
+            clip=(-100, 100),
+            noise=Unoise(n_min=-1.5, n_max=1.5),
         )
         last_action = ObsTerm(func=mdp.last_action, clip=(-100, 100))
 
@@ -255,7 +276,9 @@ class ObservationsCfg:
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=0.2, clip=(-100, 100))
         projected_gravity = ObsTerm(func=mdp.projected_gravity, clip=(-100, 100))
         velocity_commands = ObsTerm(
-            func=mdp.generated_commands, clip=(-100, 100), params={"command_name": "base_velocity"}
+            func=mdp.generated_commands,
+            clip=(-100, 100),
+            params={"command_name": "base_velocity"},
         )
         joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, clip=(-100, 100))
         joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, scale=0.05, clip=(-100, 100))
@@ -279,10 +302,14 @@ class RewardsCfg:
 
     # -- task
     track_lin_vel_xy = RewTerm(
-        func=mdp.track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
+        func=mdp.track_lin_vel_xy_exp,
+        weight=1.5,
+        params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z = RewTerm(
-        func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
+        func=mdp.track_ang_vel_z_exp,
+        weight=0.75,
+        params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
 
     # -- base
@@ -313,7 +340,9 @@ class RewardsCfg:
         func=mdp.feet_air_time,
         weight=0.1,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=WOAN4310_FOOT_PATTERN),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=WOAN4310_FOOT_PATTERN
+            ),
             "command_name": "base_velocity",
             "threshold": 0.5,
         },
@@ -321,14 +350,20 @@ class RewardsCfg:
     air_time_variance = RewTerm(
         func=mdp.air_time_variance_penalty,
         weight=-1.0,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=WOAN4310_FOOT_PATTERN)},
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=WOAN4310_FOOT_PATTERN
+            )
+        },
     )
     feet_slide = RewTerm(
         func=mdp.feet_slide,
         weight=-0.1,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=WOAN4310_FOOT_PATTERN),
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=WOAN4310_FOOT_PATTERN),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=WOAN4310_FOOT_PATTERN
+            ),
         },
     )
     # feet_contact_forces = RewTerm(
@@ -346,7 +381,9 @@ class RewardsCfg:
         weight=-1,
         params={
             "threshold": 1,
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=WOAN4310_UNDESIRED_CONTACT_PATTERN),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=WOAN4310_UNDESIRED_CONTACT_PATTERN
+            ),
         },
     )
 
@@ -358,7 +395,19 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"),
+            "threshold": 1.0,
+        },
+    )
+    upper_leg_contact = DoneTerm(
+        func=mdp.illegal_contact,
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=r"Link_(ZQ|ZH|YQ|YH)3"
+            ),
+            "threshold": 1.0,
+        },
     )
     bad_orientation = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 0.8})
 
@@ -369,6 +418,7 @@ class CurriculumCfg:
 
     terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
     lin_vel_cmd_levels = CurrTerm(mdp.lin_vel_cmd_levels)
+    ang_vel_cmd_levels = CurrTerm(mdp.ang_vel_cmd_levels)
 
 
 @configclass
