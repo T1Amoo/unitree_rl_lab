@@ -1,0 +1,42 @@
+.gitignore
+  s_b36aaddc63e62e::t_111514ac3105f8 74-78
+.gitattributes
+  s_b36aaddc63e62e::t_6708074e06f66c 19-22
+docs/WOAN4310_LOCOMOTION.md
+  s_b36aaddc63e62e::t_603756a2552e5e 46-47,64-75
+  s_b36aaddc63e62e::t_111514ac3105f8 1-45,48-63,76-83
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/__init__.py
+  s_b36aaddc63e62e::t_111514ac3105f8 1-12
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/agents/__init__.py
+  s_b36aaddc63e62e::t_111514ac3105f8 1
+source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310.py
+  s_b36aaddc63e62e::t_111514ac3105f8 1-59
+source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/README.md
+  s_b36aaddc63e62e::t_111514ac3105f8 1-31
+source/unitree_rl_lab/unitree_rl_lab/assets/robots/woan4310_description/SHA256SUMS
+  s_b36aaddc63e62e::t_111514ac3105f8 1-22
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/agents/rsl_rl_ppo_cfg.py
+  s_b36aaddc63e62e::t_111514ac3105f8 1-10
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/velocity_env_cfg.py
+  s_b36aaddc63e62e::t_111514ac3105f8 1-423
+README.md
+  s_b36aaddc63e62e::t_111514ac3105f8 88-94,96-98,100-104,107
+  s_b36aaddc63e62e::t_603756a2552e5e 95,99
+  s_b36aaddc63e62e::t_a7525b11c0753d 105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7a93556bad8f636bbdc76cf757b435240d7c3e8f",
+  "prompts": {},
+  "sessions": {
+    "s_b36aaddc63e62e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a032a4-29ea-7832-a2f9-e6b9fb6115bb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
