@@ -467,7 +467,28 @@ class RobotEnvCfg(ManagerBasedRLEnvCfg):
 class RobotPlayEnvCfg(RobotEnvCfg):
     def __post_init__(self):
         super().__post_init__()
-        self.scene.num_envs = 32
-        self.scene.terrain.terrain_generator.num_rows = 2
-        self.scene.terrain.terrain_generator.num_cols = 1
+
+        # Use a true infinite plane for play instead of a generated terrain mesh.
+        self.scene.num_envs = 256
+        self.scene.env_spacing = 2.5
+        self.scene.terrain.terrain_type = "plane"
+        self.scene.terrain.terrain_generator = None
+        self.scene.terrain.max_init_terrain_level = None
+        self.scene.terrain.visual_material = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(0.35, 0.35, 0.35), roughness=0.9
+        )
+
+        # Keep play deterministic so the only variation is the velocity command.
+        self.observations.policy.enable_corruption = False
+        self.events.physics_material = None
+        self.events.add_base_mass = None
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
+        self.events.reset_robot_joints.params["velocity_range"] = (0.0, 0.0)
+        self.events.reset_base.params = {"pose_range": {}, "velocity_range": {}}
+
+        self.commands.base_velocity.rel_standing_envs = 0.0
         self.commands.base_velocity.ranges = self.commands.base_velocity.limit_ranges
+        self.curriculum.terrain_levels = None
+        self.curriculum.lin_vel_cmd_levels = None
+        self.curriculum.ang_vel_cmd_levels = None
