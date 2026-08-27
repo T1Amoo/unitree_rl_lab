@@ -1,0 +1,43 @@
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/velocity_env_cfg.py
+  s_b36aaddc63e62e::t_31cf6b9100c320 470-476,480-490,492-494
+  s_b36aaddc63e62e::t_44b764fa681d8b 477-479
+scripts/rsl_rl/play.py
+  s_b36aaddc63e62e::t_34673bda08e307 59-63
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/v1_env_cfg.py
+  s_b36aaddc63e62e::t_89433985c7c3fa 1-51
+  s_b36aaddc63e62e::t_139e34953ecac3 52-55
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/__init__.py
+  s_b36aaddc63e62e::t_34673bda08e307 13-21
+  s_b36aaddc63e62e::t_89433985c7c3fa 22-34
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/symmetry.py
+  s_b36aaddc63e62e::t_89433985c7c3fa 1-29,48-62,66-71,77-87,91-92,96-97,101-104,108-111,115-131,135-153,157-164,168-170,180-182,186-195,199-215,219-220,227-234,238-241
+  s_b36aaddc63e62e::t_c95b31a2f8f820 30-47,63-65,72-76,88-90,93-95,98-100,105-107,112-114,132-134,154-156,165-167,171-179,183-185,196-198,216-218,221-226,235-237
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/rough_env_cfg.py
+  s_b36aaddc63e62e::t_b95ca036bb4ed1 5,19-21,51,56,58-59,62-64,78,80
+  s_b36aaddc63e62e::t_2e428b8f674e97 45-46,72,79
+  s_b36aaddc63e62e::t_34673bda08e307 1-4,6-18,22-44,47-50,52-55,57,60-61,65-71,73-77,81-82
+source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/woan4310/agents/rsl_rl_ppo_cfg.py
+  s_b36aaddc63e62e::t_89433985c7c3fa 2,6,21-35
+  s_b36aaddc63e62e::t_34673bda08e307 14-20
+  s_b36aaddc63e62e::t_17615adbdd669a 7
+tests/test_woan4310_symmetry.py
+  s_b36aaddc63e62e::t_c95b31a2f8f820 19-21,41-48,50-59,76-81,90-92,105-107,109-111,114-120,124-126,136-138,140-142,144-149,188-190,199-207
+  s_b36aaddc63e62e::t_48d35f2b03680d 1-18,22-40,49,60-75,82-89,93-104,108,112-113,121-123,127-135,139,143,150-187,191-198
+  s_b36aaddc63e62e::t_17087f56f11540 208-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "cc5750f1640475c9e78d9759b982c99851d6dd4e",
+  "prompts": {},
+  "sessions": {
+    "s_b36aaddc63e62e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a032a4-29ea-7832-a2f9-e6b9fb6115bb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "T1Amoo <menxlee@gmail.com>"
+    }
+  }
+}
